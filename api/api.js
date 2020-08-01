@@ -10,8 +10,8 @@ const hashRounds = 12;
 
 router.post("/v1/users", async (req, res) => {
 	const {username, password} = req.body;
-	if(!(username && password)){
-		res.status(400).json({error: "Missing username or password"});
+	if(typeof username !== "string" || typeof password != "string"){
+		res.status(400).json({error: "Username and password must both be supplied and both be strings"});
 		return;
 	}
 	const hash = bcrypt.hash(password, hashRounds);
@@ -20,12 +20,18 @@ router.post("/v1/users", async (req, res) => {
 		await col.insertOne({username, passwordHash: await hash, games: []});
 	}
 	catch(err){
-		if(err instanceof MongoError){
+		if(err instanceof MongoError && err.code == 11000){
 			res.status(409).json({error: "User already exists"});
-			return;
 		}
+		else if(err instanceof MongoError && err.code == 121){
+			res.status(400).json({error: "Invalid username or password"});
+		}
+		else{
+			res.status(503).json({error: "Error creating user"});
+		}
+		return;
 	}
-	res.status(201).end();
+	res.status(201).json({username, games: []});
 });
 
 module.exports = router;

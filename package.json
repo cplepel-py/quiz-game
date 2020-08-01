@@ -4,7 +4,7 @@
   "description": "A Jeopardy-style online quiz game application",
   "main": "server.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest --detectOpenHandles"
   },
   "author": "Cole Plepel",
   "license": "ISC",
