@@ -60,9 +60,26 @@ router.post("/v1/login", async (req, res) => {
 			res.status(401).json({error: "Incorrect username or password"});
 		}
 	}
-	catch(err){
-		console.error("Error here: ", err);
+	catch{
 		res.status(503).json({error: "Error verifying credentials"});
+	}
+});
+
+router.get("/v1/users/:user", async (req, res) => {
+	try{
+		const user = await (await db).collection("users").findOne({username: req.params.user});
+		if(user === null){
+			res.status(404).end();
+		}
+		else{
+			res.json({
+				id: user._id.valueOf(),
+				username: user.username,
+				games: user.games});
+		}
+	}
+	catch{
+		res.status(503).json({error: "Error retrieving user"});
 	}
 });
 

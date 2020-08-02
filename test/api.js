@@ -112,6 +112,22 @@ describe("Login API (POST /v1/login)", () => {
 	});
 });
 
+describe("Get User API (GET /v1/user/:user)", () => {
+	it("should return 404 if user does not exist", async done => {
+		const res = await request(app).get("/api/v1/users/notARealUser").send();
+		expect(res.statusCode).toBe(404);
+		done();
+	});
+	it("should return 200 and a user object if the user exists", async done => {
+		const res = await request(app).get("/api/v1/users/testUser").send();
+		expect(res.statusCode).toBe(200);
+		expect(res.body.id).toMatch(/^[a-z0-9]{24}$/);
+		expect(res.body.games).toEqual([]);
+		expect(res.body.username).toBe("testUser");
+		done();
+	});
+});
+
 afterAll(done => {
 	require("../api/db-utils").client.close();
 	done()
