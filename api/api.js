@@ -93,6 +93,9 @@ router.put("/v1/users/:user", async (req, res) => {
 		if(user === null){
 			res.status(404).end();
 		}
+		else if(typeof req.body.username !== "string" && typeof req.body.username !== "undefined"){
+			res.status(400).json({error: "Invalid request data"});
+		}
 		else if(ObjectId(id).equals(user._id)){
 			const resp = {}
 			if(req.body.password) resp.warning = "Ignored request to change password";
@@ -119,7 +122,6 @@ router.put("/v1/users/:user", async (req, res) => {
 			res.status(400).json({error: "Invalid request data"});
 		}
 		else{
-			console.error("Error here: ", err);
 			res.status(503).json({error: "Error editing user"});
 		}
 	}
