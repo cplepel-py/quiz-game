@@ -1,4 +1,4 @@
-const MongoError = require("mongodb").MongoError;
+const {MongoError, ObjectId} = require("mongodb");
 const {db} = require("./db-utils");
 const express = require("express");
 const bcrypt = require("bcrypt");
@@ -80,6 +80,48 @@ router.get("/v1/users/:user", async (req, res) => {
 	}
 	catch{
 		res.status(503).json({error: "Error retrieving user"});
+	}
+});
+
+router.put("/v1/users/:user", async (req, res) => {
+	const token = req.get("x-access-token");
+	if(!token) return res.status(401).json({error: "Invalid token"});
+	try{
+		const {id} = jwt.verify(token, jwtSecret);
+		const col = (await db).collection("users");
+		const user = await col.findOne({username: req.params.user});
+		if(user === null){
+			res.status(404).end();
+		}
+		else if(ObjectId(id).equals(user._id)){
+			const resp = {}
+			if(req.body.password) resp.warning = "Ignored request to change password";
+			await col.updateOne(
+				{_id: user._id, username: req.params.user},
+				{$set: {username: req.body.username}},
+				{ignoreUndefined: true});
+			resp.id = id;
+			resp.username = req.body.username || user.username;
+			res.status(200).json(resp);
+		}
+		else{
+			res.status(403).json({error: "Cannot edit another user"});
+		}
+	}
+	catch(err){
+		if(err instanceof jwt.JsonWebTokenError){
+			res.status(401).json({error: err.message});
+		}
+		else if(err instanceof MongoError && err.code == 11000){
+			res.status(409).json({error: "Requested username is in use"});
+		}
+		else if(err instanceof MongoError && err.code == 121){
+			res.status(400).json({error: "Invalid request data"});
+		}
+		else{
+			console.error("Error here: ", err);
+			res.status(503).json({error: "Error editing user"});
+		}
 	}
 });
 
