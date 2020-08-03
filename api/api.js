@@ -127,4 +127,33 @@ router.put("/v1/users/:user", async (req, res) => {
 	}
 });
 
+
+router.delete("/v1/users/:user", async (req, res) => {
+	const token = req.get("x-access-token");
+	if(!token) return res.status(401).json({error: "Invalid token"});
+	try{
+		const {id} = jwt.verify(token, jwtSecret);
+		const col = (await db).collection("users");
+		const user = await col.findOne({username: req.params.user});
+		if(user === null){
+			res.status(404).end();
+		}
+		else if(ObjectId(id).equals(user._id)){
+			const r = await col.deleteOne({username: req.params.user, _id: ObjectId(id)});
+			res.status(204).end();
+		}
+		else{
+			res.status(403).json({error: "Cannot delete another user"});
+		}
+	}
+	catch(err){
+		if(err instanceof jwt.JsonWebTokenError){
+			res.status(401).json({error: err.message});
+		}
+		else{
+			res.status(503).json({error: "Error deleting user"});
+		}
+	}
+});
+
 module.exports = router;
