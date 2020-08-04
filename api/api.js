@@ -83,76 +83,91 @@ router.get("/v1/users/:user", async (req, res) => {
 	}
 });
 
-router.put("/v1/users/:user", async (req, res) => {
+async function verifyToken(req, res, {hide=false, message="Unauthorized"}={}){
 	const token = req.get("x-access-token");
-	if(!token) return res.status(401).json({error: "Invalid token"});
+	if(!token){
+		res.status(401).json({error: "Invalid token"});
+		return {auth: false, found: null};
+	}
 	try{
-		const {id} = jwt.verify(token, jwtSecret);
-		const col = (await db).collection("users");
-		const user = await col.findOne({username: req.params.user});
-		if(user === null){
+		const user = (await db).collection("users")
+			.findOne({username: req.params.user});
+		const claims = jwt.verify(token, jwtSecret);
+		if(await user === null){
 			res.status(404).end();
+			return {auth: null, found: false};
 		}
-		else if(typeof req.body.username !== "string" && typeof req.body.username !== "undefined"){
-			res.status(400).json({error: "Invalid request data"});
+		else if(ObjectId((await claims).id).equals((await user)._id)){
+			return {
+				auth: true,
+				found: true,
+				claims: await claims,
+				user: await user
+			};
 		}
-		else if(ObjectId(id).equals(user._id)){
-			const resp = {}
-			if(req.body.password) resp.warning = "Ignored request to change password";
-			await col.updateOne(
-				{_id: user._id, username: req.params.user},
-				{$set: {username: req.body.username}},
-				{ignoreUndefined: true});
-			resp.id = id;
-			resp.username = req.body.username || user.username;
-			res.status(200).json(resp);
+		else if(hide){
+			res.status(404).end();
+			return {auth: false, found: true};
 		}
 		else{
-			res.status(403).json({error: "Cannot edit another user"});
+			res.status(403).json({error: message});
+			return {auth: false, found: true};
 		}
 	}
 	catch(err){
 		if(err instanceof jwt.JsonWebTokenError){
 			res.status(401).json({error: err.message});
+			return {auth: false, found: null}
 		}
-		else if(err instanceof MongoError && err.code == 11000){
+		throw err;
+	}
+}
+
+router.put("/v1/users/:user", async (req, res) => {
+	try{
+		const {user} = await verifyToken(req, res,
+			{message: "Cannot edit another user"});
+		if(user){
+			if(req.body.username && typeof req.body.username !== "string")
+				return res.status(400).json({error: "Invalid request data"});
+			let resp = {id: user._id.valueOf()};
+			if(req.body.password)
+				resp.warning = "Ignored request to change password";
+			await (await db).collection("users").updateOne(
+				{_id: user._id},
+				{$set: {username: req.body.username}},
+				{ignoreUndefined: true}
+			);
+			if(req.body.username)
+				resp.username = req.body.username;
+			res.status(200).json(resp);
+		}
+	}
+	catch(err){
+		if(err instanceof MongoError && err.code == 11000){
 			res.status(409).json({error: "Requested username is in use"});
 		}
-		else if(err instanceof MongoError && err.code == 121){
-			res.status(400).json({error: "Invalid request data"});
+		else if(err instanceof MongoError){
+			res.status(503).json({error: "Database error or invalid request data"});
 		}
 		else{
-			res.status(503).json({error: "Error editing user"});
+			res.status(503).json({error: "Error updating user"});
 		}
 	}
 });
 
 
 router.delete("/v1/users/:user", async (req, res) => {
-	const token = req.get("x-access-token");
-	if(!token) return res.status(401).json({error: "Invalid token"});
 	try{
-		const {id} = jwt.verify(token, jwtSecret);
-		const col = (await db).collection("users");
-		const user = await col.findOne({username: req.params.user});
-		if(user === null){
-			res.status(404).end();
-		}
-		else if(ObjectId(id).equals(user._id)){
-			const r = await col.deleteOne({username: req.params.user, _id: ObjectId(id)});
+		const {user} = await verifyToken(req, res,
+			{message: "Cannot delete another user"});
+		if(user){
+			await (await db).collection("users").deleteOne({_id: user._id});
 			res.status(204).end();
 		}
-		else{
-			res.status(403).json({error: "Cannot delete another user"});
-		}
 	}
-	catch(err){
-		if(err instanceof jwt.JsonWebTokenError){
-			res.status(401).json({error: err.message});
-		}
-		else{
-			res.status(503).json({error: "Error deleting user"});
-		}
+	catch{
+		res.status(503).json({error: "Could not delete user"});
 	}
 });
 
