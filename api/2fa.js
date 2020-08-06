@@ -9,9 +9,10 @@ const nexmo = new (require("nexmo"))({
 	apiSecret: process.env.NEXMO_API_SECRET
 });
 
-async function sendSMS(user, number=undefined){
-	query = typeof user === "string" ? {username: user} : {_id: user};
-	tel = number || (await (await db).collection("users").findOne(query)).number
+async function sendSMS(user, rel="password", number=undefined){
+	const query = typeof user === "string" ? {username: user} : {_id: user};
+	const tel = number || (await (await db).collection("users").findOne(query))
+		.number;
 	return await new Promise((resolve, reject) => {
 		nexmo.verify.request({
 			number: tel,
@@ -24,7 +25,7 @@ async function sendSMS(user, number=undefined){
 				db.then(conn => {
 					conn.collection("users").updateOne(
 						query,
-						{$set: {request_id: result.request_id}}
+						{$set: {`request_id.${rel}`: result.request_id}}
 					).then(() => resolve(result.request_id)).catch(reject);
 				}).catch(reject);
 			}
@@ -33,9 +34,10 @@ async function sendSMS(user, number=undefined){
 	});
 }
 
-async function authenticateCode(user, code){
-	query = typeof user === "string" ? {username: user} : {_id: user};
-	request_id = (await (await db).collection("users").findOne(query)).request_id;
+async function authenticateCode(user, code, rel="password"){
+	const query = typeof user === "string" ? {username: user} : {_id: user};
+	const request_id = (await (await db).collection("users").findOne(query))
+		.request_id[rel];
 	return await new Promise((resolve, reject) => {
 		nexmo.verify.check({request_id, code}, (err, result) => {
 			if(err) reject(err);
@@ -43,7 +45,7 @@ async function authenticateCode(user, code){
 				db.then(conn => {
 					conn.collection("users").updateOne(
 						query,
-						{$set: request_id: null}
+						{$set: `request_id.${rel}`: null}
 					).then(() => resolve(request_id)).catch(reject);
 				}).catch(reject);
 			}
