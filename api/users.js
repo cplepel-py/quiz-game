@@ -93,7 +93,7 @@ router.get("/v1/users/:user", async (req, res) => {
 	}
 });
 
-async function verifyToken(req, res, {hide=false, message="Unauthorized"}={}){
+async function verifyToken(req, res, {message="Unauthorized"}={}){
 	const token = req.get("x-access-token");
 	if(!token){
 		res.status(401).json({error: "Invalid token"});
@@ -115,12 +115,12 @@ async function verifyToken(req, res, {hide=false, message="Unauthorized"}={}){
 				user: await user
 			};
 		}
-		else if(hide){
-			res.status(404).end();
+		else if(message){
+			res.status(403).json({error: message});
 			return {auth: false, found: true};
 		}
 		else{
-			res.status(403).json({error: message});
+			res.status(404).end();
 			return {auth: false, found: true};
 		}
 	}
