@@ -25,7 +25,7 @@ async function sendSMS(user, rel="password", number=undefined){
 				db.then(conn => {
 					conn.collection("users").updateOne(
 						query,
-						{$set: {`request_id.${rel}`: result.request_id}}
+						{$set: {[`request_id.${rel}`]: result.request_id}}
 					).then(() => resolve(result.request_id)).catch(reject);
 				}).catch(reject);
 			}
@@ -38,6 +38,7 @@ async function authenticateCode(user, code, rel="password"){
 	const query = typeof user === "string" ? {username: user} : {_id: user};
 	const request_id = (await (await db).collection("users").findOne(query))
 		.request_id[rel];
+	if(!request_id) throw new AuthenticationError("No code was requested");
 	return await new Promise((resolve, reject) => {
 		nexmo.verify.check({request_id, code}, (err, result) => {
 			if(err) reject(err);
@@ -45,7 +46,7 @@ async function authenticateCode(user, code, rel="password"){
 				db.then(conn => {
 					conn.collection("users").updateOne(
 						query,
-						{$set: `request_id.${rel}`: null}
+						{$set: {[`request_id.${rel}`]: undefined}}
 					).then(() => resolve(request_id)).catch(reject);
 				}).catch(reject);
 			}
@@ -55,3 +56,5 @@ async function authenticateCode(user, code, rel="password"){
 		});
 	});
 }
+
+module.exports = {SMSError, AuthenticationError, sendSMS, authenticateCode};
