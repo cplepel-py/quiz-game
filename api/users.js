@@ -2,8 +2,8 @@ const {MongoError, ObjectId} = require("mongodb");
 const {db} = require("./db-utils");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const {sendSMS, authenticateCode, SMSError, AuthenticationError} =
-	require("./2fa.js");
+const {sendSMS, authenticateCode, SMSError, AuthenticationError, verifyToken} =
+	require("./auth.js");
 const router = require("express").Router();
 
 const hashRounds = 12;
@@ -92,35 +92,6 @@ router.get("/v1/users/:user", async (req, res) => {
 		res.status(503).json({error: "Error retrieving user"});
 	}
 });
-
-async function verifyToken(token, res, {ids=null, message="Unauthorized"}={}){
-	if(typeof token !== "string"){
-		res.status(401).json({error: "Missing token"});
-		return {valid: false, auth: false};
-	}
-	try{
-		const claims = await jwt.verify(token, jwtSecret);
-		const claim_id = claims.id.toLowerCase();
-		if(ids === null || ids.some(id => id.toLowerCase() === claim_id)){
-			return {valid: true, auth: true, claims};
-		}
-		else if(message){
-			res.status(403).json({error: message});
-			return {valid: true, auth: false, claims};
-		}
-		else{
-			res.status(404).end();
-			return {valid: true, auth: false, claims};
-		}
-	}
-	catch(err){
-		if(err instanceof jwt.JsonWebTokenError){
-			res.status(401).json({error: err.message});
-			return {valid: false, auth: false};
-		}
-		throw err;
-	}
-}
 
 router.put("/v1/users/:user", async (req, res) => {
 	try{
