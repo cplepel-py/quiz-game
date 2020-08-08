@@ -93,41 +93,30 @@ router.get("/v1/users/:user", async (req, res) => {
 	}
 });
 
-async function verifyToken(req, res, {message="Unauthorized"}={}){
-	const token = req.get("x-access-token");
-	if(!token){
-		res.status(401).json({error: "Invalid token"});
-		return {auth: false, found: null};
+async function verifyToken(token, res, {ids=null, message="Unauthorized"}={}){
+	if(typeof token !== "string"){
+		res.status(401).json({error: "Missing token"});
+		return {valid: false, auth: false};
 	}
 	try{
-		const user = (await db).collection("users")
-			.findOne({username: req.params.user});
-		const claims = jwt.verify(token, jwtSecret);
-		if(await user === null){
-			res.status(404).end();
-			return {auth: null, found: false};
-		}
-		else if(ObjectId((await claims).id).equals((await user)._id)){
-			return {
-				auth: true,
-				found: true,
-				claims: await claims,
-				user: await user
-			};
+		const claims = await jwt.verify(token, jwtSecret);
+		const claim_id = claims.id.toLowerCase();
+		if(ids === null || ids.some(id => id.toLowerCase() === claim_id)){
+			return {valid: true, auth: true, claims};
 		}
 		else if(message){
 			res.status(403).json({error: message});
-			return {auth: false, found: true};
+			return {valid: true, auth: false, claims};
 		}
 		else{
 			res.status(404).end();
-			return {auth: false, found: true};
+			return {valid: true, auth: false, claims};
 		}
 	}
 	catch(err){
 		if(err instanceof jwt.JsonWebTokenError){
 			res.status(401).json({error: err.message});
-			return {auth: false, found: null}
+			return {valid: false, auth: false};
 		}
 		throw err;
 	}
@@ -135,12 +124,15 @@ async function verifyToken(req, res, {message="Unauthorized"}={}){
 
 router.put("/v1/users/:user", async (req, res) => {
 	try{
-		const {user} = await verifyToken(req, res,
-			{message: "Cannot edit another user"});
-		if(user){
+		const user = await (await db).collection("users")
+			.findOne({username: req.params.user});
+		if(user === null) return res.status(404).end();
+		const {auth} = await verifyToken(req.get("x-access-token"), res,
+			{message: "Cannot edit another user", ids: [user._id.toString()]});
+		if(auth){
 			if(req.body.username && typeof req.body.username !== "string")
 				return res.status(400).json({error: "Invalid request data"});
-			let resp = {id: user._id.valueOf()};
+			let resp = {id: user._id};
 			if(req.body.password)
 				resp.warning = "Ignored request to change password";
 			await (await db).collection("users").updateOne(
@@ -171,8 +163,11 @@ router.put("/v1/users/:user", async (req, res) => {
 
 router.delete("/v1/users/:user", async (req, res) => {
 	try{
-		const {user} = await verifyToken(req, res,
-			{message: "Cannot delete another user"});
+		const user = await (await db).collection("users")
+			.findOne({username: req.params.user});
+		if(user === null) return res.status(404).end();
+		const {auth} = await verifyToken(req.get("x-access-token"), res,
+			{message: "Cannot delete another user", ids: [user._id.toString()]});
 		if(user){
 			await (await db).collection("users").deleteOne({_id: user._id});
 			res.status(204).end();
@@ -185,9 +180,14 @@ router.delete("/v1/users/:user", async (req, res) => {
 
 router.post("/v1/users/:user/password", async (req, res) => {
 	try{
-		const {user} = await verifyToken(req, res,
-			{message: "Cannot change the password of another user"});
-		if(user && req.body.code && req.body.password){
+		const user = await (await db).collection("users")
+			.findOne({username: req.params.user});
+		if(user === null) return res.status(404).end();
+		const {auth} = await verifyToken(req.get("x-access-token"), res, {
+			message: "Cannot change the password of another user",
+			ids: [user._id.toString()]
+		});
+		if(auth && req.body.code && req.body.password){
 			await authenticateCode(user._id, req.body.code, "password");
 			const hash = bcrypt.hash(req.body.password, hashRounds);
 			await (await db).collection("users").updateOne(
@@ -196,10 +196,10 @@ router.post("/v1/users/:user/password", async (req, res) => {
 			);
 			res.status(200).json({message: "Updated password"});
 		}
-		else if(user && (req.body.code || req.body.password)){
+		else if(auth && (req.body.code || req.body.password)){
 			res.status(400).json({error: "Code or password provided alone"});
 		}
-		else if(user){
+		else if(auth){
 			const number = user.number ? user.number : req.body.number;
 			await sendSMS(user._id, "password", number);
 			res.status(200).json({
