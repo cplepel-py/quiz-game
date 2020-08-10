@@ -99,4 +99,18 @@ router.put("/v1/games/:game([a-zA-Z0-9]{24})", async (req, res) => {
 	}
 });
 
+router.get("/v1/games/:game([a-zA-Z0-9]{24})", async (req, res) => {
+	try{
+		const game = await (await db).collection("games")
+			.findOne({_id: ObjectId(req.params.game)});
+		if(game === null) return res.status(404).end();
+		const auth = !game.isPrivate || (await verifyToken(
+			req.get("x-access-token"), res, {ids: game.editors})).auth;
+		if(auth) res.status(200).json(game);
+	}
+	catch(err){
+		res.status(503).json({error: "Encountered an unexpected error"});
+	}
+});
+
 module.exports = router;
