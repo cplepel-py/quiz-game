@@ -75,6 +75,106 @@ describe("Create Game API (POST /v1/games)", () => {
 	});
 });
 
+describe("Update game API (PUT /v1/games/:game)", () => {
+	let token, id, uid=1;
+	beforeAll(async done => {
+		await clearCollection("games");
+		await clearCollection("users");
+		({id: uid} = (await request(app).post("/api/v1/users")
+			.send({username: "testUser", password: "testPass"})).body);
+		({token} = (await request(app).post("/api/v1/login")
+			.send({username: "testUser", password: "testPass"})).body);
+		({id} = (await request(app).post("/api/v1/games")
+			.set("x-access-token", token).send({title: "Test Game"})).body);
+		done();
+	});
+	describe("Authentication and Authorization Issues", () => {
+		it("should return 401 if no token is provided", async done => {
+			const res = await request(app).put(`/api/v1/games/${id}`)
+				.send({});
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 401 if an invalid token is provided", async done => {
+			const res = await request(app).put(`/api/v1/games/${id}`)
+				.set("x-access-token", "notAToken")
+				.send({});
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 401 if the token is expired", async done => {
+			const {uid} = (await request(app).get("/api/v1/users/testUser")).body;
+			const token = require("jsonwebtoken")
+				.sign({id: uid}, process.env.JWT_SECRET, {expiresIn: -1});
+			const res = await request(app).put(`/api/v1/games/${id}`)
+				.set("x-access-token", token).send({});
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 403 if the token is for the wrong user", async done => {
+			await request(app).post("/api/v1/users")
+				.send({username: "testUser2", password: "testPass2"});
+			const {token} = (await request(app).post("/api/v1/login")
+				.send({username: "testUser2", password: "testPass2"})).body;
+			const res = await request(app).put(`/api/v1/games/${id}`)
+				.set("x-access-token", token).send({});
+			expect(res.statusCode).toBe(403);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+	});
+	describe("Authorized Requests", () => {
+		it("should return 404 if the id is incorrect", async done => {
+			const fake_id = (id[0] === "0" ? "1" : "0") + id.slice(1);
+			const res = await request(app).put(`/api/v1/games/${fake_id}`)
+				.set("x-access-token", token).send({});
+			expect(res.statusCode).toBe(404);
+			done();
+		});
+		it("shoud return 400 if no title is provided", async done => {
+			const res = await request(app).put(`/api/v1/games/${id}`)
+				.set("x-access-token", token).send({});
+			expect(res.statusCode).toBe(400);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("shoud return 400 if editors is missing", async done => {
+			const res = await request(app).put(`/api/v1/games/${id}`)
+				.set("x-access-token", token).send({title: "Missing Editors"});
+			expect(res.statusCode).toBe(400);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("shoud return 400 if editors is empty", async done => {
+			const res = await request(app).put(`/api/v1/games/${id}`)
+				.set("x-access-token", token)
+				.send({title: "No Editors", editors: []});
+			expect(res.statusCode).toBe(400);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("shoud return 400 if board is malformed", async done => {
+			const res = await request(app).put(`/api/v1/games/${id}`)
+				.set("x-access-token", token)
+				.send({title: "Malformed Board", board: {abc: 10}, editors: [uid]});
+			expect(res.statusCode).toBe(400);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("shoud return 200 if request is valid and successful", async done => {
+			const res = await request(app).put(`/api/v1/games/${id}`)
+				.set("x-access-token", token)
+				.send({title: "Updated Game", editors: [uid]});
+			expect(res.statusCode).toBe(400);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+	});
+});
+
 afterAll(async done => {
 	client = await require("../api/db-utils").conn;
 	await client.close();

@@ -73,4 +73,30 @@ router.post("/v1/games", async (req, res) => {
 	}
 });
 
+router.put("/v1/games/:game([a-zA-Z0-9]{24})", async (req, res) => {
+	try{
+		const old = await (await db).collection("games")
+			.findOne({_id: ObjectId(req.params.game)});
+		if(old === null) return res.status(404).end();
+		const {auth, claims} = await verifyToken(req.get("x-access-token"), res,
+			{ids: old.editors});
+		if(auth){
+			const game = parseGame(req.body);
+			if(game.editors.length < 1) return res.status(400).json({
+				error: "Game must have at least one editor"
+			});
+			res.status(200).json({game});
+		}
+	}
+	catch(err){
+		if(err instanceof MongoError && err.code == 121)
+			res.status(400).json({error: "Invalid data"});
+		else if(err instanceof TypeError){
+			res.status(400).json({error: err.message});
+		}
+		else
+			res.status(503).json({error: "Error updating game"});
+	}
+});
+
 module.exports = router;
