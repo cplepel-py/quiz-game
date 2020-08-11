@@ -115,4 +115,21 @@ router.get("/v1/games/:game([a-zA-Z0-9]{24})", async (req, res) => {
 	}
 });
 
+router.delete("/v1/games/:game([a-zA-Z0-9]{24})", async (req, res) => {
+	try{
+		const _id = ObjectId(req.params.game);
+		const game = await (await db).collection("games").findOne({_id});
+		if(game === null) return res.status(404).end();
+		const {auth} = await verifyToken(req.get("x-access-token"), res,
+			{ids: game.editors});
+		if(auth){
+			await (await db).collection("games").deleteOne({_id});
+			res.status(204).end();
+		}
+	}
+	catch{
+		res.status(503).json({error: "Could not delete game"});
+	}
+});
+
 module.exports = router;
