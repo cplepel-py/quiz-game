@@ -75,8 +75,9 @@ router.post("/v1/games", async (req, res) => {
 
 router.put("/v1/games/:game([a-zA-Z0-9]{24})", async (req, res) => {
 	try{
+		const _id = ObjectId(req.params.game);
 		const old = await (await db).collection("games")
-			.findOne({_id: ObjectId(req.params.game)});
+			.findOne({_id});
 		if(old === null) return res.status(404).end();
 		const {auth, claims} = await verifyToken(req.get("x-access-token"), res,
 			{ids: old.editors});
@@ -85,6 +86,7 @@ router.put("/v1/games/:game([a-zA-Z0-9]{24})", async (req, res) => {
 			if(game.editors.length < 1) return res.status(400).json({
 				error: "Game must have at least one editor"
 			});
+			await (await db).collection("games").replaceOne({_id}, game);
 			res.status(200).json({game});
 		}
 	}
