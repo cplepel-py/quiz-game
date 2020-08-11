@@ -31,8 +31,7 @@ function parseGame({
 	}={}){
 	if(typeof title !== "string")
 		throw new TypeError("title must be a string and is required");
-	if(!Array.isArray(editors) ||
-	   !editors.every(e => (/^[a-zA-Z0-9]{24}$/.test(e))))
+	if(!Array.isArray(editors) || editors.some(e => !/^[a-f0-9]{24}$/i.test(e)))
 		throw new TypeError("editors must be an array of user ids");
 	if(typeof isPrivate !== "boolean")
 		throw new TypeError("isPrivate must be a boolean");
@@ -64,22 +63,19 @@ router.post("/v1/games", async (req, res) => {
 	catch(err){
 		if(err instanceof MongoError && err.code == 121)
 			res.status(400).json({error: "Invalid data"});
-		else if(err instanceof TypeError){
+		else if(err instanceof TypeError)
 			res.status(400).json({error: err.message});
-		}
-		else{
+		else
 			res.status(503).json({error: "Error creating game"});
-		}
 	}
 });
 
-router.put("/v1/games/:game([a-zA-Z0-9]{24})", async (req, res) => {
+router.put("/v1/games/:game([a-f0-9]{24})", async (req, res) => {
 	try{
 		const _id = ObjectId(req.params.game);
-		const old = await (await db).collection("games")
-			.findOne({_id});
+		const old = await (await db).collection("games").findOne({_id});
 		if(old === null) return res.status(404).end();
-		const {auth, claims} = await verifyToken(req.get("x-access-token"), res,
+		const {auth} = await verifyToken(req.get("x-access-token"), res,
 			{ids: old.editors});
 		if(auth){
 			const game = parseGame(req.body);
@@ -93,15 +89,14 @@ router.put("/v1/games/:game([a-zA-Z0-9]{24})", async (req, res) => {
 	catch(err){
 		if(err instanceof MongoError && err.code == 121)
 			res.status(400).json({error: "Invalid data"});
-		else if(err instanceof TypeError){
+		else if(err instanceof TypeError)
 			res.status(400).json({error: err.message});
-		}
 		else
 			res.status(503).json({error: "Error updating game"});
 	}
 });
 
-router.get("/v1/games/:game([a-zA-Z0-9]{24})", async (req, res) => {
+router.get("/v1/games/:game([a-f0-9]{24})", async (req, res) => {
 	try{
 		const game = await (await db).collection("games")
 			.findOne({_id: ObjectId(req.params.game)});
@@ -110,12 +105,12 @@ router.get("/v1/games/:game([a-zA-Z0-9]{24})", async (req, res) => {
 			req.get("x-access-token"), res, {ids: game.editors})).auth;
 		if(auth) res.status(200).json(game);
 	}
-	catch(err){
+	catch{
 		res.status(503).json({error: "Encountered an unexpected error"});
 	}
 });
 
-router.delete("/v1/games/:game([a-zA-Z0-9]{24})", async (req, res) => {
+router.delete("/v1/games/:game([a-f0-9]{24})", async (req, res) => {
 	try{
 		const _id = ObjectId(req.params.game);
 		const game = await (await db).collection("games").findOne({_id});
