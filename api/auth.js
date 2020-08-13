@@ -63,27 +63,27 @@ async function authenticateCode(user, code, rel="password"){
 async function verifyToken(token, res, {ids=null, message="Unauthorized"}={}){
 	if(typeof token !== "string"){
 		if(res) res.status(401).json({error: "Missing token"});
-		return {valid: false, auth: false};
+		return {valid: false, auth: false, code: 401, message: "Missing Token"};
 	}
 	try{
 		const claims = await jwt.verify(token, jwtSecret);
 		const claim_id = claims.id.toLowerCase();
 		if(ids === null || ids.some(id => id.toLowerCase() === claim_id)){
-			return {valid: true, auth: true, claims};
+			return {valid: true, auth: true, claims, code: 200};
 		}
 		else if(message){
 			if(res) res.status(403).json({error: message});
-			return {valid: true, auth: false, claims};
+			return {valid: true, auth: false, claims, code: 403, message};
 		}
 		else{
 			if(res) res.status(404).end();
-			return {valid: true, auth: false, claims};
+			return {valid: true, auth: false, claims, code: 404};
 		}
 	}
 	catch(err){
 		if(err instanceof jwt.JsonWebTokenError){
 			if(res) res.status(401).json({error: err.message});
-			return {valid: false, auth: false};
+			return {valid: false, auth: false, code: 401, message: err.message};
 		}
 		throw err;
 	}
