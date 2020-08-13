@@ -62,7 +62,7 @@ async function authenticateCode(user, code, rel="password"){
 
 async function verifyToken(token, res, {ids=null, message="Unauthorized"}={}){
 	if(typeof token !== "string"){
-		res.status(401).json({error: "Missing token"});
+		if(res) res.status(401).json({error: "Missing token"});
 		return {valid: false, auth: false};
 	}
 	try{
@@ -72,17 +72,17 @@ async function verifyToken(token, res, {ids=null, message="Unauthorized"}={}){
 			return {valid: true, auth: true, claims};
 		}
 		else if(message){
-			res.status(403).json({error: message});
+			if(res) res.status(403).json({error: message});
 			return {valid: true, auth: false, claims};
 		}
 		else{
-			res.status(404).end();
+			if(res) res.status(404).end();
 			return {valid: true, auth: false, claims};
 		}
 	}
 	catch(err){
 		if(err instanceof jwt.JsonWebTokenError){
-			res.status(401).json({error: err.message});
+			if(res) res.status(401).json({error: err.message});
 			return {valid: false, auth: false};
 		}
 		throw err;
