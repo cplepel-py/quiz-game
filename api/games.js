@@ -27,10 +27,13 @@ function parseGame({
 		isPrivate=false,
 		tags=[],
 		interval=100,
-		board={}
+		board={},
+		owner
 	}={}){
 	if(typeof title !== "string")
 		throw new TypeError("title must be a string and is required");
+	if(typeof owner !== "string")
+		throw new TypeError("owner must be a string and is required");
 	if(!Array.isArray(editors) || editors.some(e => !/^[a-f0-9]{24}$/i.test(e)))
 		throw new TypeError("editors must be an array of user ids");
 	if(typeof isPrivate !== "boolean")
@@ -42,13 +45,14 @@ function parseGame({
 	if(typeof board !== "object" || board === null)
 		throw new TypeError("board must be a non-null object");
 	verifyBoard(board);
-	return {title, editors, isPrivate, tags, interval, board};
+	return {title, editors, isPrivate, tags, interval, board, owner};
 }
 
 router.post("/v1/games", async (req, res) => {
 	try{
 		const {auth, claims} = await verifyToken(req.get("x-access-token"), res);
 		if(auth){
+			req.body.owner = req.body.owner || claims.id;
 			const game = parseGame(req.body);
 			game.editors.push(claims.id);
 			const {insertedId} = await (await db).collection("games")
@@ -76,12 +80,9 @@ router.put("/v1/games/:game([a-f0-9]{24})", async (req, res) => {
 		const old = await (await db).collection("games").findOne({_id});
 		if(old === null) return res.status(404).end();
 		const {auth} = await verifyToken(req.get("x-access-token"), res,
-			{ids: old.editors});
+			{ids: [old.owner, ...old.editors]});
 		if(auth){
 			const game = parseGame(req.body);
-			if(game.editors.length < 1) return res.status(400).json({
-				error: "Game must have at least one editor"
-			});
 			await (await db).collection("games").replaceOne({_id}, game);
 			res.status(200).json({game});
 		}
@@ -102,7 +103,8 @@ router.get("/v1/games/:game([a-f0-9]{24})", async (req, res) => {
 			.findOne({_id: ObjectId(req.params.game)});
 		if(game === null) return res.status(404).end();
 		const auth = !game.isPrivate || (await verifyToken(
-			req.get("x-access-token"), res, {ids: game.editors})).auth;
+			req.get("x-access-token"), res, {ids: [game.owner, ...game.editors]}
+		)).auth;
 		if(auth) res.status(200).json(game);
 	}
 	catch{
@@ -116,13 +118,13 @@ router.delete("/v1/games/:game([a-f0-9]{24})", async (req, res) => {
 		const game = await (await db).collection("games").findOne({_id});
 		if(game === null) return res.status(404).end();
 		const {auth} = await verifyToken(req.get("x-access-token"), res,
-			{ids: game.editors});
+			{ids: [game.owner, ...game.editors]});
 		if(auth){
 			await (await db).collection("games").deleteOne({_id});
 			res.status(204).end();
 		}
 	}
-	catch{
+	catch(err){
 		res.status(503).json({error: "Could not delete game"});
 	}
 });
