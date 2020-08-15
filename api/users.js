@@ -191,4 +191,35 @@ router.post("/v1/users/:user/password", async (req, res) => {
 	}
 });
 
+router.get("/v1/users", async (req, res) => {
+	try{
+		let {page=1, perPage=20, q="", regex=false, opts=""} = req.query;
+		page = parseInt(page);
+		perPage = parseInt(perPage);
+		if(typeof q !== "string")
+			return res.status(400).json({error: "Query (q) must be a string"});
+		if(typeof opts !== "string")
+			return res.status(400).json({error: "opts must be a string"});
+		if(isNaN(page) || isNaN(perPage))
+			return res.status(400).json({error: "page and perPage must be ints"});
+		if(page < 1 || perPage < 1)
+			return res.status(400).json({error: "Non-positive page or perPage"});
+		regex = regex && regex !== "0" && regex !== "false";
+		const query = regex ? {$regex: q, $options: opts} :
+			{$regex: `(${q.split(/\W+/).join('|')})`, $options: "i"};
+		const cursor = await (await db).collection("users")
+			.find({username: query}, {projection: {username: true}});
+		const count = cursor.count();
+		const users = cursor.skip(perPage*(page-1)).limit(perPage).map(game => {
+			const {_id, ...data} = game;
+			return {id: _id.toString(), ...data};
+		}).toArray();
+		const pages = Math.ceil(await count / perPage);
+		res.status(200).json({users: await users, total: await count, pages});
+	}
+	catch{
+		res.status(503).json({error: "Could not fetch users"});
+	}
+});
+
 module.exports = router;

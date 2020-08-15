@@ -272,6 +272,102 @@ describe("Change Password API (POST /v1/users/:user/password)", () => {
 	});
 });
 
+describe("Search Games API (GET /v1/games)", () => {
+	beforeAll(async done => {
+		await clearCollection("users");
+		const user1 = request(app).post("/api/v1/users")
+			.send({username: "user1", password: "password"});
+		const user2 = request(app).post("/api/v1/users")
+			.send({username: "user2", password: "password"});
+		const tester = request(app).post("/api/v1/users")
+			.send({username: "tester", password: "password"});
+		const testuser = request(app).post("/api/v1/users")
+			.send({username: "testuser", password: "password"});
+		const test_user = request(app).post("/api/v1/users")
+			.send({username: "test-user", password: "password"});
+		await user1; await user2; await tester; await testuser; await test_user;
+		done();
+	});
+	describe("Invalid Requests", () => {
+		it("should return 400 if page is negative", async done => {
+			const res = await request(app).get("/api/v1/users")
+				.query({page: -1, perPage: 10}).send();
+			expect(res.statusCode).toBe(400);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 400 if results per page is negative", async done => {
+			const res = await request(app).get("/api/v1/users")
+				.query({page: 1, perPage: -10}).send();
+			expect(res.statusCode).toBe(400);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+	});
+	describe("Valid Requests", () => {
+		it("should return three users for 'test'", async done => {
+			const res = await request(app).get("/api/v1/users")
+				.query({page: 1, perPage: 10, q: "test"}).send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).not.toHaveProperty("error");
+			expect(res.body.users.length).toBe(3);
+			expect(res.body.total).toBe(3);
+			expect(res.body.pages).toBe(1);
+			done();
+		});
+		it("should return three users for /^user\d$/", async done => {
+			const res = await request(app).get("/api/v1/users")
+				.query({page: 1, perPage: 10, q: "^user\\d$", regex: "true"})
+				.send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).not.toHaveProperty("error");
+			expect(res.body.users.length).toBe(2);
+			expect(res.body.total).toBe(2);
+			expect(res.body.pages).toBe(1);
+			done();
+		});
+		it("should return five users for 'test user'", async done => {
+			const res = await request(app).get("/api/v1/users")
+				.query({page: 1, perPage: 10, q: "test user"}).send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).not.toHaveProperty("error");
+			expect(res.body.users.length).toBe(5);
+			expect(res.body.total).toBe(5);
+			expect(res.body.pages).toBe(1);
+			done();
+		});
+		it("should return 3 pages for 5 results with 2 per page", async done => {
+			const res = await request(app).get("/api/v1/users")
+				.query({page: 1, perPage: 2, q: "test user"}).send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).not.toHaveProperty("error");
+			expect(res.body.users.length).toBe(2);
+			expect(res.body.total).toBe(5);
+			expect(res.body.pages).toBe(3);
+			done();
+		});
+		it("should return 1 game on page 3 for 5 games and 2/page", async done => {
+			const res = await request(app).get("/api/v1/users")
+				.query({page: 3, perPage: 2, q: "test user"}).send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).not.toHaveProperty("error");
+			expect(res.body.users.length).toBe(1);
+			expect(res.body.total).toBe(5);
+			expect(res.body.pages).toBe(3);
+			done();
+		});
+		it("should return only usernames snf ifd", async done => {
+			const res = await request(app).get("/api/v1/users")
+				.query({page: 1, perPage: 10, q: "test user"}).send();
+			expect(res.body.users[0]).toEqual(expect.objectContaining({
+				username: expect.any(String),
+				id: expect.stringMatching(/[a-f0-9]{24}/i)
+			}));
+			done();
+		});
+	});
+});
+
 afterAll(async done => {
 	client = await require("../api/db-utils").conn;
 	await client.close();
