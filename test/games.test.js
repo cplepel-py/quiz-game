@@ -415,6 +415,17 @@ describe("Search Games API (GET /v1/games)", () => {
 			expect(res.body.pages).toBe(1);
 			done();
 		});
+		it("should return only titles, editors, tags, and ids", async done => {
+			const res = await request(app).get("/api/v1/games")
+				.query({page: 1, perPage: 10, tags: ["A"]}).send();
+			expect(res.body.games[0]).toEqual(expect.objectContaining({
+				title: expect.any(String),
+				editors: expect.any(Array),
+				tags: expect.any(Array),
+				id: expect.stringMatching(/[a-f0-9]{24}/i)
+			}));
+			done();
+		});
 		it("should treat tags='A' the same as tags=['A']", async done => {
 			const res = await request(app).get("/api/v1/games")
 				.query({page: 1, perPage: 10, tags: "A"}).send();

@@ -149,11 +149,12 @@ router.get("/v1/games", async (req, res) => {
 			access.$or.push({editors: claims.id});
 		}
 		query = {$and: [access, {$or: tags.map(tag => ({tags: tag}))}]};
-		const cursor = await (await db).collection("games").find(query, {
-			title: true,
-			editors: true,
-			tags: true
-		});
+		const cursor = await (await db).collection("games").find(query)
+			.project({
+				title: true,
+				editors: true,
+				tags: true
+			});
 		const count = cursor.count();
 		const games = cursor.skip(perPage*(page-1)).limit(perPage).map(game => {
 			const {_id, ...data} = game;
