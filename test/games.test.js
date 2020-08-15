@@ -343,6 +343,137 @@ describe("Delete game API (DELETE /v1/games/:game)", () => {
 	});
 });
 
+describe("Search Games API (GET /v1/games)", () => {
+	let token, uid;
+	beforeAll(async done => {
+		await clearCollection("games");
+		await clearCollection("users");
+		({id: uid} = (await request(app).post("/api/v1/users")
+			.send({username: "testUser", password: "testPass"})).body);
+		({token} = (await request(app).post("/api/v1/login")
+			.send({username: "testUser", password: "testPass"})).body);
+		let openA = request(app).post("/api/v1/games")
+			.set("x-access-token", token)
+			.send({title: "Test Game", tags: ["A"]});
+		let openB = request(app).post("/api/v1/games")
+			.set("x-access-token", token)
+			.send({title: "Test Game", tags: ["B"]});
+		let openAB = request(app).post("/api/v1/games")
+			.set("x-access-token", token)
+			.send({title: "Test Game", tags: ["A", "B"]});
+		let closedA = request(app).post("/api/v1/games")
+			.set("x-access-token", token)
+			.send({title: "Test Game", tags: ["A"], isPrivate: true});
+		let closedAB = request(app).post("/api/v1/games")
+			.set("x-access-token", token)
+			.send({title: "Test Game", tags: ["A", "B"], isPrivate: true});
+		await openA; await openB; await openAB; await closedA; await closedAB;
+		done();
+	});
+	describe("Authentication Errors", () => {
+		it("should return 401 if an invalid token is provided", async done => {
+			const res = await request(app).get("/api/v1/games")
+				.set("x-access-token", "notAToken").send();
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 401 if an expired token is provided", async done => {
+			const token = require("jsonwebtoken")
+				.sign({id: uid}, process.env.JWT_SECRET, {expiresIn: -1});
+			const res = await request(app).get("/api/v1/games")
+				.set("x-access-token", "notAToken").send();
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+	});
+	describe("Invalid Requests", () => {
+		it("should return 400 if page is negative", async done => {
+			const res = await request(app).get("/api/v1/games")
+				.query({page: -1, perPage: 10}).send();
+			expect(res.statusCode).toBe(400);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 400 if results per page is negative", async done => {
+			const res = await request(app).get("/api/v1/games")
+				.query({page: 1, perPage: -10}).send();
+			expect(res.statusCode).toBe(400);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+	});
+	describe("Valid Requests", () => {
+		it("should return two public games with tag A", async done => {
+			const res = await request(app).get("/api/v1/games")
+				.query({page: 1, perPage: 10, tags: ["A"]}).send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).not.toHaveProperty("error");
+			expect(res.body.games.length).toBe(2);
+			expect(res.body.total).toBe(2);
+			expect(res.body.pages).toBe(1);
+			done();
+		});
+		it("should treat tags='A' the same as tags=['A']", async done => {
+			const res = await request(app).get("/api/v1/games")
+				.query({page: 1, perPage: 10, tags: "A"}).send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).not.toHaveProperty("error");
+			expect(res.body.games.length).toBe(2);
+			expect(res.body.total).toBe(2);
+			expect(res.body.pages).toBe(1);
+			done();
+		});
+		it("should return three public games with tag A or B", async done => {
+			const res = await request(app).get("/api/v1/games")
+				.query({page: 1, perPage: 10, tags: ["A", "B"]}).send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).not.toHaveProperty("error");
+			expect(res.body.games.length).toBe(3);
+			expect(res.body.total).toBe(3);
+			expect(res.body.pages).toBe(1);
+			done();
+		});
+		it("should return four games with tag A with a token", async done => {
+			const res = await request(app).get("/api/v1/games")
+				.set("x-access-token", token)
+				.query({page: 1, perPage: 10, tags: ["A"]})
+				.send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).not.toHaveProperty("error");
+			expect(res.body.games.length).toBe(4);
+			expect(res.body.total).toBe(4);
+			expect(res.body.pages).toBe(1);
+			done();
+		});
+		it("should return 3 pages for 5 results with 2 per page", async done => {
+			const res = await request(app).get("/api/v1/games")
+				.set("x-access-token", token)
+				.query({page: 1, perPage: 2, tags: ["A", "B"]})
+				.send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).not.toHaveProperty("error");
+			expect(res.body.games.length).toBe(2);
+			expect(res.body.total).toBe(5);
+			expect(res.body.pages).toBe(3);
+			done();
+		});
+		it("should return 1 game on page 3 for 5 games and 2/page", async done => {
+			const res = await request(app).get("/api/v1/games")
+				.set("x-access-token", token)
+				.query({page: 3, perPage: 2, tags: ["A", "B"]})
+				.send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).not.toHaveProperty("error");
+			expect(res.body.games.length).toBe(1);
+			expect(res.body.total).toBe(5);
+			expect(res.body.pages).toBe(3);
+			done();
+		});
+	});
+});
+
 afterAll(async done => {
 	client = await require("../api/db-utils").conn;
 	await client.close();
