@@ -8,4 +8,20 @@ const client = new MongoClient(`mongodb://${dbUser}:${dbPass}@${dbHost}:${dbPort
 const conn = client.connect();
 const db = conn.then(() => client.db(dbName));
 
-module.exports = {db, conn};
+async function searchCollection(
+		collection,
+		query,
+		{projection={}, page=1, perPage=0}={}){
+	if(page < 0 || perPage < 0) throw ValueError("page and perPage must be >= 0");
+	const cursor = await (await db).collection(collection).find(query)
+		.project(projection);
+	const count = cursor.count();
+	const result = cursor.skip((page-1)*perPage).limit(perPage).map(game => {
+		const {_id, ...data} = game;
+		return {id: _id.toString(), ...data};
+	}).toArray();
+	const pages = perPage ? Math.ceil(await count / perPage) : 1
+	return {pages, total: await count, result: await result};
+}
+
+module.exports = {db, conn, searchCollection};

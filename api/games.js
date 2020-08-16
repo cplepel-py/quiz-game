@@ -1,5 +1,5 @@
 const {MongoError, ObjectId} = require("mongodb");
-const {db} = require("./db-utils.js");
+const {db, searchCollection} = require("./db-utils.js");
 const {verifyToken} = require("./auth.js");
 const router = require("express").Router();
 
@@ -150,15 +150,12 @@ router.get("/v1/games", async (req, res) => {
 			access.$or.push({editors: claims.id});
 		}
 		query = {$and: [access, {$or: tags.map(tag => ({tags: tag}))}]};
-		const cursor = await (await db).collection("games").find(query)
-			.project({title: true, editors: true, tags: true});
-		const count = cursor.count();
-		const games = cursor.skip(perPage*(page-1)).limit(perPage).map(game => {
-			const {_id, ...data} = game;
-			return {id: _id.toString(), ...data};
-		}).toArray();
-		const pages = Math.ceil(await count / perPage);
-		res.status(200).json({games: await games, total: await count, pages});
+		const {result: games, ...data} = await searchCollection("games", query, {
+			projection: {title: true, editors: true, tags: true},
+			page,
+			perPage
+		});
+		res.status(200).json({games, ...data});
 	}
 	catch{
 		res.status(503).json({error: "Could not fetch games"});

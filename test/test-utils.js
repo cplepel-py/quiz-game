@@ -19,7 +19,23 @@ function mockDbUtils(){
 		_db.collection("users").createIndex({username: 1}, {unique: true});
 		return _db;
 	});
-	return {db, conn, _server: server};
+	async function searchCollection(
+			collection,
+			query,
+			{projection={}, page=1, perPage=0}={}){
+		if(page < 0 || perPage < 0)
+			throw ValueError("page and perPage must be >= 0");
+		const cursor = await (await db).collection(collection).find(query)
+			.project(projection);
+		const count = cursor.count();
+		const result = cursor.skip((page-1)*perPage).limit(perPage).map(game => {
+			const {_id, ...data} = game;
+			return {id: _id.toString(), ...data};
+		}).toArray();
+		const pages = perPage ? Math.ceil(await count / perPage) : 1
+		return {pages, total: await count, result: await result};
+	}
+	return {db, conn, _server: server, searchCollection};
 }
 
 module.exports = {clearCollection, mockDbUtils};

@@ -1,5 +1,5 @@
 const {MongoError, ObjectId} = require("mongodb");
-const {db} = require("./db-utils");
+const {db, searchCollection} = require("./db-utils");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const {sendSMS, authenticateCode, SMSError, AuthenticationError, verifyToken} =
@@ -207,15 +207,12 @@ router.get("/v1/users", async (req, res) => {
 		regex = regex && regex !== "0" && regex !== "false";
 		const query = regex ? {$regex: q, $options: opts} :
 			{$regex: `(${q.split(/\W+/).join('|')})`, $options: "i"};
-		const cursor = await (await db).collection("users")
-			.find({username: query}, {projection: {username: true}});
-		const count = cursor.count();
-		const users = cursor.skip(perPage*(page-1)).limit(perPage).map(game => {
-			const {_id, ...data} = game;
-			return {id: _id.toString(), ...data};
-		}).toArray();
-		const pages = Math.ceil(await count / perPage);
-		res.status(200).json({users: await users, total: await count, pages});
+		const {result: users, ...data} = await searchCollection(
+			"users",
+			{username: query},
+			{projection: {username: true}, page, perPage}
+		);
+		res.status(200).json({users, ...data});
 	}
 	catch{
 		res.status(503).json({error: "Could not fetch users"});
