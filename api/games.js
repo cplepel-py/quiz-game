@@ -138,8 +138,9 @@ router.get("/v1/games", async (req, res) => {
 			return res.status(400).json({error: "page and perPage must be ints"});
 		if(page < 1 || perPage < 1)
 			return res.status(400).json({error: "Non-positive page or perPage"});
-		if(typeof tags === "string") tags = [tags];
-		if(!Array.isArray(tags) || tags.some(e => typeof e !== "string"))
+		if(typeof tags === "string")
+			tags = [tags];
+		else if(!Array.isArray(tags) || tags.some(e => typeof e !== "string"))
 			return res.status(400).json({error: "tags must be a string array"});
 		const token = req.get("x-access-token");
 		const access = {$or: [{isPrivate: false}]};
@@ -150,11 +151,7 @@ router.get("/v1/games", async (req, res) => {
 		}
 		query = {$and: [access, {$or: tags.map(tag => ({tags: tag}))}]};
 		const cursor = await (await db).collection("games").find(query)
-			.project({
-				title: true,
-				editors: true,
-				tags: true
-			});
+			.project({title: true, editors: true, tags: true});
 		const count = cursor.count();
 		const games = cursor.skip(perPage*(page-1)).limit(perPage).map(game => {
 			const {_id, ...data} = game;
@@ -163,7 +160,7 @@ router.get("/v1/games", async (req, res) => {
 		const pages = Math.ceil(await count / perPage);
 		res.status(200).json({games: await games, total: await count, pages});
 	}
-	catch(err){
+	catch{
 		res.status(503).json({error: "Could not fetch games"});
 	}
 });
