@@ -358,16 +358,16 @@ describe("Search Games API (GET /v1/games)", () => {
 		let openB = request(app).post("/api/v1/games")
 			.set("x-access-token", token)
 			.send({title: "Test Game", tags: ["B"]});
-		let openAB = request(app).post("/api/v1/games")
+		let openBC = request(app).post("/api/v1/games")
 			.set("x-access-token", token)
-			.send({title: "Test Game", tags: ["A", "B"]});
+			.send({title: "Test Game", tags: ["B", "C"]});
 		let closedA = request(app).post("/api/v1/games")
 			.set("x-access-token", token)
 			.send({title: "Test Game", tags: ["A"], isPrivate: true});
 		let closedAB = request(app).post("/api/v1/games")
 			.set("x-access-token", token)
 			.send({title: "Test Game", tags: ["A", "B"], isPrivate: true});
-		await openA; await openB; await openAB; await closedA; await closedAB;
+		await openA; await openB; await openBC; await closedA; await closedAB;
 		done();
 	});
 	describe("Authentication Errors", () => {
@@ -405,13 +405,13 @@ describe("Search Games API (GET /v1/games)", () => {
 		});
 	});
 	describe("Valid Requests", () => {
-		it("should return two public games with tag A", async done => {
+		it("should filter public games by tag", async done => {
 			const res = await request(app).get("/api/v1/games")
 				.query({page: 1, perPage: 10, tags: ["A"]}).send();
 			expect(res.statusCode).toBe(200);
 			expect(res.body).not.toHaveProperty("error");
-			expect(res.body.games.length).toBe(2);
-			expect(res.body.total).toBe(2);
+			expect(res.body.games.length).toBe(1);
+			expect(res.body.total).toBe(1);
 			expect(res.body.pages).toBe(1);
 			done();
 		});
@@ -431,12 +431,22 @@ describe("Search Games API (GET /v1/games)", () => {
 				.query({page: 1, perPage: 10, tags: "A"}).send();
 			expect(res.statusCode).toBe(200);
 			expect(res.body).not.toHaveProperty("error");
+			expect(res.body.games.length).toBe(1);
+			expect(res.body.total).toBe(1);
+			expect(res.body.pages).toBe(1);
+			done();
+		});
+		it("should include games with additional tags", async done => {
+			const res = await request(app).get("/api/v1/games")
+				.query({page: 1, perPage: 10, tags: ["B"]}).send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).not.toHaveProperty("error");
 			expect(res.body.games.length).toBe(2);
 			expect(res.body.total).toBe(2);
 			expect(res.body.pages).toBe(1);
 			done();
 		});
-		it("should return three public games with tag A or B", async done => {
+		it("should return games with any requested tag", async done => {
 			const res = await request(app).get("/api/v1/games")
 				.query({page: 1, perPage: 10, tags: ["A", "B"]}).send();
 			expect(res.statusCode).toBe(200);
@@ -446,15 +456,15 @@ describe("Search Games API (GET /v1/games)", () => {
 			expect(res.body.pages).toBe(1);
 			done();
 		});
-		it("should return four games with tag A with a token", async done => {
+		it("should return private games as well with a token", async done => {
 			const res = await request(app).get("/api/v1/games")
 				.set("x-access-token", token)
 				.query({page: 1, perPage: 10, tags: ["A"]})
 				.send();
 			expect(res.statusCode).toBe(200);
 			expect(res.body).not.toHaveProperty("error");
-			expect(res.body.games.length).toBe(4);
-			expect(res.body.total).toBe(4);
+			expect(res.body.games.length).toBe(3);
+			expect(res.body.total).toBe(3);
 			expect(res.body.pages).toBe(1);
 			done();
 		});

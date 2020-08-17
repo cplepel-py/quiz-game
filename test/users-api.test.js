@@ -305,7 +305,7 @@ describe("Search Games API (GET /v1/games)", () => {
 		});
 	});
 	describe("Valid Requests", () => {
-		it("should return three users for 'test'", async done => {
+		it("should return users with names containing text query", async done => {
 			const res = await request(app).get("/api/v1/users")
 				.query({page: 1, perPage: 10, q: "test"}).send();
 			expect(res.statusCode).toBe(200);
@@ -315,7 +315,7 @@ describe("Search Games API (GET /v1/games)", () => {
 			expect(res.body.pages).toBe(1);
 			done();
 		});
-		it("should return three users for /^user\d$/", async done => {
+		it("should return users with names matching regex query", async done => {
 			const res = await request(app).get("/api/v1/users")
 				.query({page: 1, perPage: 10, q: "^user\\d$", regex: "true"})
 				.send();
@@ -326,7 +326,7 @@ describe("Search Games API (GET /v1/games)", () => {
 			expect(res.body.pages).toBe(1);
 			done();
 		});
-		it("should return five users for 'test user'", async done => {
+		it("should match any word of multi-word text queries", async done => {
 			const res = await request(app).get("/api/v1/users")
 				.query({page: 1, perPage: 10, q: "test user"}).send();
 			expect(res.statusCode).toBe(200);
@@ -356,7 +356,7 @@ describe("Search Games API (GET /v1/games)", () => {
 			expect(res.body.pages).toBe(3);
 			done();
 		});
-		it("should return only usernames snf ifd", async done => {
+		it("should return only usernames", async done => {
 			const res = await request(app).get("/api/v1/users")
 				.query({page: 1, perPage: 10, q: "test user"}).send();
 			expect(res.body.users[0]).toEqual(expect.objectContaining({
