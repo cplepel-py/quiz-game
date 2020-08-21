@@ -13,30 +13,21 @@
     "url": "https://github.com/cplepel-py/quiz-game.git"
   },
   "dependencies": {
+    "@lasso/marko-taglib": "^1.0.15",
     "bcrypt": "^5.0.0",
     "express": "^4.17.1",
     "jsonwebtoken": "^8.5.1",
+    "lasso": "^3.3.1",
+    "lasso-marko": "^2.5.0",
+    "marko": "^4.22.7",
     "mongodb": "^3.5.9",
     "nexmo": "^2.8.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.11.1",
-    "@babel/preset-env": "^7.11.0",
-    "babel-loader": "^8.1.0",
-    "css-loader": "^4.2.1",
     "dotenv": "^8.2.0",
-    "html-webpack-plugin": "^4.3.0",
     "jest": "^26.2.2",
     "mongodb-memory-server": "^6.6.3",
-    "rimraf": "^3.0.2",
-    "supertest": "^4.0.2",
-    "vue": "^2.6.11",
-    "vue-loader": "^15.9.3",
-    "vue-style-loader": "^4.1.2",
-    "vue-template-compiler": "^2.6.11",
-    "webpack": "^4.44.1",
-    "webpack-cli": "^3.3.12",
-    "webpack-dev-server": "^3.11.0"
+    "supertest": "^4.0.2"
   },
   "jest": {
     "testRegex": "./test/.*.test.js$",
