@@ -1,40 +1,78 @@
 class {
 	onCreate() {
-		this.state = {pwd: "", conf: "", username: "", phone: "", highlight: false, error: ""};
+		this.state = {
+			pwd: "",
+			conf: "",
+			username: "",
+			phone: "",
+			highlight: false,
+			error: "",
+			pwError: "",
+			unError: "",
+			phError: ""
+		};
 	}
-	updatePwd(_, el) {this.state.pwd = el.value;}
-	updateConf(_, el) {this.state.conf = el.value;}
-	updateUsername(_, el) {this.state.username = el.value;}
-	updatePhone(_, el) {this.state.phone = el.value;}
+	updatePwd(_, el) {
+		this.state.pwd = el.value;
+		this.state.pwError = this.state.pwd === this.state.conf ?
+			"" : "Passwords do not match";
+	}
+	updateConf(_, el) {
+		this.state.conf = el.value;
+		this.state.pwError = this.state.pwd === this.state.conf ?
+			"" : "Passwords do not match";
+	}
+	updateUsername(_, el) {
+		this.state.username = el.value;
+		this.state.unError = this.state.username ? "" : "Username is required";
+	}
+	updatePhone(_, el) {
+		this.state.phone = el.value;
+		this.state.phError = this.state.phone ? "" : "Phone number is required";
+	}
 	flash() {
 		this.state.highlight = true;
 		setTimeout(() => {this.state.highlight = false;}, 100);
 	}
 	submit() {
-		fetch("/api/v1/users", {
-			method: "POST",
-			headers: {"Content-Type": "application/json"},
-			body: JSON.stringify({
-				username: this.state.username,
-				password: this.state.pwd,
-				number: this.state.phone
-			})
-		}).then(res => {
-			if(res.status === 201)
-				return window.location.assign("/login");
-			res.json().then(body => {
-				this.state.error = body.error || "An error occurred creating a new user";
-				this.flash();
+		this.state.error = "";
+		if(this.state.pwd !== this.state.conf){
+			this.state.pwError = "Passwords do not match";
+			this.flash();
+		}
+		else if(!this.state.username){
+			this.state.unError = "Username is required";
+			this.flash();
+		}
+		else if(!this.state.phone){
+			this.state.phError = "Phone number is required";
+			this.flash();
+		}
+		else
+			fetch("/api/v1/users", {
+				method: "POST",
+				headers: {"Content-Type": "application/json"},
+				body: JSON.stringify({
+					username: this.state.username,
+					password: this.state.pwd,
+					number: this.state.phone
+				})
+			}).then(res => {
+				if(res.status === 201)
+					return window.location.assign("/login");
+				res.json().then(body => {
+					this.state.error = body.error || "An error occurred creating a new user";
+					this.flash();
+				}).catch(e => {
+					console.error(e);
+					this.state.error = "An error occurred creating a new user";
+					this.flash();
+				});
 			}).catch(e => {
 				console.error(e);
 				this.state.error = "An error occurred creating a new user";
 				this.flash();
 			});
-		}).catch(e => {
-			console.error(e);
-			this.state.error = "An error occurred creating a new user";
-			this.flash();
-		});
 	}
 }
 
@@ -42,14 +80,27 @@ class {
 	<@body>
 		<div class="card">
 			<h2>Sign Up</h2>
-			<input type="text" placeholder="Username" value=state.username on-input("updateUsername") /><br/>
+			<input type="text" placeholder="Username"
+				style={backgroundColor: (state.unError ? "#ffc0c0" : "white")}
+				value=state.username on-input("updateUsername") /><br/>
 			<input type="password" placeholder="Password" value=state.pwd on-input("updatePwd") /><br/>
-			<input type="password" placeholder="Confirm Password" value=state.conf
+			<input type="password" placeholder="Confirm Password"
 				style={backgroundColor: (state.pwd === state.conf ? 'white' : '#ffc0c0')}
-				on-input("updateConf") /><br/>
-			<input type="text" placeholder="Phone Number" value=state.phone on-input("updatePhone") /><br/>
+				value=state.conf on-input("updateConf") /><br/>
+			<input type="text" placeholder="Phone Number"
+				style={backgroundColor: (state.phError ? "#ffc0c0" : "white")}
+				value=state.phone on-input("updatePhone") /><br/>
 			<input type="button" value="Sign Up" on-click("submit") />
 			<div class={"error-container--highlight": state.highlight}>
+				<if(state.pwError)>
+					<div class="error-box">${state.pwError}</div>
+				</if>
+				<else-if(state.unError)>
+					<div class="error-box">${state.unError}</div>
+				</else-if>
+				<else-if(state.phError)>
+					<div class="error-box">${state.phError}</div>
+				</else-if>
 				<if(state.error)>
 					<div class="error-box">${state.error}</div>
 				</if>
