@@ -1,3 +1,5 @@
+import zxcvbn from "zxcvbn";
+
 class {
 	onCreate() {
 		this.state = {
@@ -9,7 +11,9 @@ class {
 			error: "",
 			pwError: "",
 			unError: "",
-			phError: ""
+			phError: "",
+			pwWarning: "",
+			pwHints: []
 		};
 	}
 	updatePwd(_, el) {
@@ -76,6 +80,32 @@ class {
 	}
 }
 
+$ let report = zxcvbn(state.pwd, ["quiz", "game", "jeopardy", "correcthorsebatterystaple"]);
+$ function getScore(glog10){
+	let score = (glog10 - 6) / 9;
+	if(glog10 < 6)
+		return {text: "unsafe", color: "#ff0000", score: 0};
+	else if(glog10 < 7)
+		return {text: "very weak", color: "#ff0000", score};
+	else if(glog10 < 8)
+		return {text: "very weak", color: "#ff4000", score};
+	else if(glog10 < 9)
+		return {text: "weak", color: "#ff8000", score};
+	else if(glog10 < 10)
+		return {text: "so-so", color: "#ffc000", score};
+	else if(glog10 < 11)
+		return {text: "ok", color: "#fff000", score};
+	else if(glog10 < 12)
+		return {text: "good", color: "#c0f000", score};
+	else if(glog10 < 14)
+		return {text: "strong", color: "#80f000", score};
+	else if(glog10 < 18)
+		return {text: "very strong", color: "#40f000", score: 1};
+	else
+		return {text: "super strong", color: "#00f000", score: 1};
+}
+$ let pwScore = getScore(report.guesses_log10);
+
 <base-outline title="Sign Up | Quiz Game">
 	<@body>
 		<div class="card">
@@ -84,6 +114,14 @@ class {
 				style={backgroundColor: (state.unError ? "#ffc0c0" : "white")}
 				value=state.username on-input("updateUsername") /><br/>
 			<input type="password" placeholder="Password" value=state.pwd on-input("updatePwd") /><br/>
+			<div class="pw-bar-container" title="Password strength">
+				<div class="pw-bar" style={backgroundColor: pwScore.color, width: `Calc(${pwScore.score*100}% - 4px)`}>${pwScore.text}</div>
+			</div>
+			<br>
+			<if(report.feedback.warning)><div class="pw-warn">${report.feedback.warning}</div></if>
+			<for|sugg| of=report.feedback.suggestions>
+				<div class="pw-sugg">${sugg}</div>
+			</for>
 			<input type="password" placeholder="Confirm Password"
 				style={backgroundColor: (state.pwd === state.conf ? 'white' : '#ffc0c0')}
 				value=state.conf on-input("updateConf") /><br/>
@@ -141,5 +179,25 @@ style {
 	}
 	.error-container--highlight .error-box {
 		background-color: #ff8080;
+	}
+	.pw-bar-container {
+		width: 20ch;
+		border-radius: 8px;
+		overflow: hidden;
+		border: 1px solid #ccc;
+		display: inline-block;
+	}
+	.pw-bar {
+		white-space: nowrap;
+		padding: 2px;
+		font-size: 0.9em;
+	}
+	.pw-warn {
+		color: #ff0000;
+		font-size: 0.9em;
+	}
+	.pw-sugg {
+		color: #ffc000;
+		font-size: 0.9em;
 	}
 }

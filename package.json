@@ -21,7 +21,8 @@
     "lasso-marko": "^2.5.0",
     "marko": "^4.22.7",
     "mongodb": "^3.5.9",
-    "nexmo": "^2.8.0"
+    "nexmo": "^2.8.0",
+    "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
     "dotenv": "^8.2.0",
