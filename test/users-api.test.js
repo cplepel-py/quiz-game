@@ -195,46 +195,6 @@ describe("Change Password API (POST /v1/users/:user/password)", () => {
 			.send({username: "testUser", password: "testPass"});
 		done();
 	});
-	describe("Authentication and Authorization Issues", () => {
-		it("should return 401 if no token is provided", async done => {
-			const res = await request(app)
-				.post("/api/v1/users/testUser/password").send();
-			expect(res.statusCode).toBe(401);
-			expect(res.body).toHaveProperty("error");
-			done();
-		});
-		it("should return 401 if an invalid token is provided", async done => {
-			const res = await request(app)
-				.post("/api/v1/users/testUser/password")
-				.set("x-access-token", "notAToken").send();
-			expect(res.statusCode).toBe(401);
-			expect(res.body).toHaveProperty("error");
-			done();
-		});
-		it("should return 401 if the token is expired", async done => {
-			const {id} = (await request(app).get("/api/v1/users/testUser")).body;
-			const token = require("jsonwebtoken")
-				.sign({id}, process.env.JWT_SECRET, {expiresIn: -1});
-			const res = await request(app)
-				.post("/api/v1/users/testUser/password")
-				.set("x-access-token", token).send();
-			expect(res.statusCode).toBe(401);
-			expect(res.body).toHaveProperty("error");
-			done();
-		});
-		it("should return 403 if the token is for the wrong user", async done => {
-			const {token} = (await request(app).post("/api/v1/login")
-				.send({username: "testUser", password: "testPass"})).body;
-			await request(app).post("/api/v1/users")
-				.send({username: "testUser2", password: "testPass2"});
-			const res = await request(app)
-				.post("/api/v1/users/testUser2/password")
-				.set("x-access-token", token).send();
-			expect(res.statusCode).toBe(403);
-			expect(res.body).toHaveProperty("error");
-			done();
-		});
-	});
 	describe("Authorized Requests", () => {
 		it("should return 400 if a password and no code is sent", async done => {
 			const {token} = (await request(app).post("/api/v1/login")

@@ -154,11 +154,7 @@ router.post("/v1/users/:user/password", async (req, res) => {
 		const user = await (await db).collection("users")
 			.findOne({username: req.params.user});
 		if(user === null) return res.status(404).end();
-		const {auth} = await verifyToken(req.get("x-access-token"), res, {
-			message: "Cannot change the password of another user",
-			ids: [user._id.toString()]
-		});
-		if(auth && req.body.code && req.body.password){
+		if(req.body.code && req.body.password){
 			await authenticateCode(user._id, req.body.code, "password");
 			const hash = bcrypt.hash(req.body.password, hashRounds);
 			await (await db).collection("users").updateOne(
@@ -167,14 +163,14 @@ router.post("/v1/users/:user/password", async (req, res) => {
 			);
 			res.status(200).json({message: "Updated password"});
 		}
-		else if(auth && (req.body.code || req.body.password)){
+		else if((req.body.code || req.body.password)){
 			res.status(400).json({error: "Code or password provided alone"});
 		}
-		else if(auth){
+		else{
 			const number = user.number ? user.number : req.body.number;
 			await sendSMS(user._id, "password", number);
 			res.status(200).json({
-				message: `Code send to number ending in ${number.slice(-2)}`
+				message: `Code sent to number ending in ${number.slice(-2)}`
 			});
 		}
 	}
