@@ -1,6 +1,7 @@
 const {MongoError} = require("mongodb");
 const {db} = require("./db-utils");
 const jwt = require("jsonwebtoken");
+const speakeasy = require("speakeasy");
 
 const jwtSecret = process.env.JWT_SECRET;
 
@@ -11,6 +12,20 @@ const nexmo = new (require("nexmo"))({
 	apiKey: process.env.NEXMO_API_KEY,
 	apiSecret: process.env.NEXMO_API_SECRET
 });
+
+async function set2FA(user){
+	const query = typeof user === "string" ? {username: user} : {_id: user};
+	const otpauth = speakeasy.generateSecret({name: "Quiz Game"}).base32;
+	await (await db).collection("users").updateOne(query, {$set: {otpauth}});
+	return otpauth;
+}
+
+async function unset2FA(user){
+	const query = typeof user === "string" ? {username: user} : {_id: user};
+	await (await db).collection("users")
+		.updateOne(query, {$set: {otpauth: undefined}});
+	return true;
+}
 
 async function sendSMS(user, rel="password", number=undefined){
 	const query = typeof user === "string" ? {username: user} : {_id: user};
