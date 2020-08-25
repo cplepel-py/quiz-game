@@ -120,5 +120,6 @@ async function verifyToken(token, res, {ids=null, message="Unauthorized"}={}){
 }
 
 module.exports = {
-	SMSError, AuthenticationError, sendSMS, authenticateCode, verifyToken
+	SMSError, AuthenticationError, sendSMS, authenticateCode, verifyToken,
+	set2FA, unset2FA, check2FA
 };
