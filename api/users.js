@@ -2,7 +2,7 @@ const {MongoError, ObjectId} = require("mongodb");
 const {db, searchCollection} = require("./db-utils");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const {sendSMS, authenticateCode, SMSError, AuthenticationError, verifyToken} =
+const {check2FA, verifyToken} =
 	require("./auth.js");
 const router = require("express").Router();
 
@@ -151,11 +151,9 @@ router.delete("/v1/users/:user", async (req, res) => {
 
 router.post("/v1/users/:user/password", async (req, res) => {
 	try{
-		const user = await (await db).collection("users")
-			.findOne({username: req.params.user});
-		if(user === null) return res.status(404).end();
 		if(req.body.code && req.body.password){
-			await authenticateCode(user._id, req.body.code, "password");
+			const {auth, error} = await check2FA(req.params.user, req.body.code);
+			if(!auth) return res.status(401).json({error});
 			const hash = bcrypt.hash(req.body.password, hashRounds);
 			await (await db).collection("users").updateOne(
 				{_id: user._id},
@@ -163,23 +161,13 @@ router.post("/v1/users/:user/password", async (req, res) => {
 			);
 			res.status(200).json({message: "Updated password"});
 		}
-		else if((req.body.code || req.body.password)){
-			res.status(400).json({error: "Code or password provided alone"});
-		}
 		else{
-			const number = user.number ? user.number : req.body.number;
-			await sendSMS(user._id, "password", number);
-			res.status(200).json({
-				message: `Code sent to number ending in ${number.slice(-2)}`
-			});
+			res.status(400).json({error: "Code and new password are required"});
 		}
 	}
 	catch(err){
-		if(err instanceof SMSError)
-			res.status(503).json({error: "Could not send SMS message"});
-		else if(err instanceof AuthenticationError)
-			res.status(401).json({error: err.message});
-		else if(err instanceof MongoError)
+		console.error(err);
+		if(err instanceof MongoError)
 			res.status(503).json({error: "Error accessing database"});
 		else{
 			res.status(503).json({error: "Error with 2FA procedure"});

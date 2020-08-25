@@ -224,7 +224,7 @@ describe("Change Password API (POST /v1/users/:user/password)", () => {
 			const res = await request(app)
 				.post("/api/v1/users/testUser/password")
 				.set("x-access-token", token)
-				.send({code: "11235", password: "newPassword"});
+				.send({code: "112358", password: "newPassword"});
 			expect(res.statusCode).toBe(401);
 			expect(res.body).toHaveProperty("error");
 			done();
