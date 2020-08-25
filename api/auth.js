@@ -29,8 +29,8 @@ async function unset2FA(user){
 
 async function check2FA(user, code){
 	const query = typeof user === "string" ? {username: user} : {_id: user};
-	const res = await (await db).collection("users").findOne(query)
-		.project({otpauth: true, _id: false});
+	const res = await (await db).collection("users")
+		.findOne(query, {projection: {otpauth: true, _id: false}});
 	if(res === null) return {auth: false, error: "User not found"};
 	if(!res.otpauth) return {auth: false, error: "2FA not enabled"};
 	const valid = speakeasy.totp.verify({
