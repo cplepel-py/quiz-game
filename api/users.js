@@ -2,8 +2,8 @@ const {MongoError, ObjectId} = require("mongodb");
 const {db, searchCollection} = require("./db-utils");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const {check2FA, verifyToken} =
-	require("./auth.js");
+const {verifyToken, check2FA, set2FA} = require("./auth.js");
+const {otpauthURL} = require("speakeasy");
 const router = require("express").Router();
 
 const hashRounds = 12;
@@ -200,6 +200,31 @@ router.get("/v1/users", async (req, res) => {
 	}
 	catch{
 		res.status(503).json({error: "Could not fetch users"});
+	}
+});
+
+router.post("/v1/users/:user/2fa", async (req, res) => {
+	try{
+		const user = await (await db).collection("users")
+			.findOne({username: req.params.user});
+		if(user === null) return res.status(404).end();
+		const {auth} = await verifyToken(req.get("x-access-token"), res,
+			{message: "Cannot edit another user", ids: [user._id.toString()]});
+		if(auth){
+			const otpauth_url = otpauthURL({
+				secret: await set2FA(user._id),
+				label: req.params.user,
+				issuer: "Quiz Game"
+			});
+			res.status(200).json({otpauth_url});
+		}
+	}
+	catch(err){
+		console.error(err);
+		if(err instanceof MongoError)
+			res.status(503).json({error: "Error accessing database"});
+		else
+			res.status(503).json({error: "Error enabling 2FA"});
 	}
 });
 

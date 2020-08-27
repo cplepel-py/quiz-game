@@ -328,6 +328,75 @@ describe("Search Games API (GET /v1/games)", () => {
 	});
 });
 
+describe("Enable 2FA API (POST /v1/users/:user/2fa)", () => {
+	beforeAll(async done => {
+		await clearCollection("users");
+		await request(app).post("/api/v1/users")
+			.send({username: "testUser", password: "testPass"});
+		done();
+	});
+	describe("Authentication and Authorization Issues", () => {
+		it("should return 401 if no token is provided", async done => {
+			const res = await request(app).post("/api/v1/users/testUser/2fa")
+				.send();
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 401 if an invalid token is provided", async done => {
+			const res = await request(app).post("/api/v1/users/testUser/2fa")
+				.set("x-access-token", "notAToken").send();
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 401 if the token is expired", async done => {
+			const {id} = (await request(app).get("/api/v1/users/testUser")).body;
+			const token = require("jsonwebtoken")
+				.sign({id}, process.env.JWT_SECRET, {expiresIn: -1});
+			const res = await request(app).post("/api/v1/users/testUser/2fa")
+				.set("x-access-token", token).send();
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 403 if the token is for the wrong user", async done => {
+			const {token} = (await request(app).post("/api/v1/login")
+				.send({username: "testUser", password: "testPass"})).body;
+			await request(app).post("/api/v1/users")
+				.send({username: "testUser2", password: "testPass2"});
+			const res = await request(app).post("/api/v1/users/testUser2/2fa")
+				.set("x-access-token", token).send();
+			expect(res.statusCode).toBe(403);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+	});
+	describe("Authorized Requests", () => {
+		it("should return 200 with the OTPAuth URL", async done => {
+			const {token} = (await request(app).post("/api/v1/login")
+				.send({username: "testUser", password: "testPass"})).body;
+			const res = await request(app).post("/api/v1/users/testUser/2fa")
+				.set("x-access-token", token).send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body).toHaveProperty("otpauth_url");
+			done();
+		});
+		it("should return a different OTPAuth URL each time", async done => {
+			const {token} = (await request(app).post("/api/v1/login")
+				.send({username: "testUser", password: "testPass"})).body;
+			let res = await request(app).post("/api/v1/users/testUser/2fa")
+				.set("x-access-token", token).send();
+			let oldUrl = res.body.otpauth_url;
+			res = await request(app).post("/api/v1/users/testUser/2fa")
+				.set("x-access-token", token).send();
+			expect(res.statusCode).toBe(200);
+			expect(oldUrl).not.toEqual(res.body.otpauth_url);
+			done();
+		});
+	});
+});
+
 afterAll(async done => {
 	client = await require("../api/db-utils").conn;
 	await client.close();
