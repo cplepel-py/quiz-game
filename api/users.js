@@ -10,7 +10,7 @@ const hashRounds = 12;
 const jwtSecret = process.env.JWT_SECRET
 
 router.post("/v1/users", async (req, res) => {
-	const {username, password, number} = req.body;
+	const {username, password} = req.body;
 	if(typeof username !== "string" || typeof password != "string"){
 		res.status(400).json({
 			error: "Username and password must both be strings"
@@ -23,9 +23,7 @@ router.post("/v1/users", async (req, res) => {
 		await col.insertOne({
 			username,
 			passwordHash: await hash,
-			games: [],
-			request_id: {},
-			number
+			games: []
 		});
 	}
 	catch(err){
