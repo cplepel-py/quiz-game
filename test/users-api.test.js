@@ -397,6 +397,68 @@ describe("Enable 2FA API (POST /v1/users/:user/2fa)", () => {
 	});
 });
 
+describe("Disable 2FA API (DELETE /v1/users/:user/2fa)", () => {
+	let token;
+	beforeAll(async done => {
+		await clearCollection("users");
+		await request(app).post("/api/v1/users")
+			.send({username: "testUser", password: "testPass"});
+		({token} = (await request(app).post("/api/v1/login")
+			.send({username: "testUser", password: "testPass"})).body);
+		done();
+	});
+	beforeEach(async done => {
+		await request(app).post("/api/v1/users/testUser/2fa")
+			.set("x-access-token", token).send();
+		done();
+	});
+	describe("Authentication and Authorization Issues", () => {
+		it("should return 401 if no token is provided", async done => {
+			const res = await request(app).delete("/api/v1/users/testUser/2fa")
+				.send();
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 401 if an invalid token is provided", async done => {
+			const res = await request(app).delete("/api/v1/users/testUser/2fa")
+				.set("x-access-token", "notAToken").send();
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 401 if the token is expired", async done => {
+			const {id} = (await request(app).get("/api/v1/users/testUser")).body;
+			const token = require("jsonwebtoken")
+				.sign({id}, process.env.JWT_SECRET, {expiresIn: -1});
+			const res = await request(app).delete("/api/v1/users/testUser/2fa")
+				.set("x-access-token", token).send();
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 403 if the token is for the wrong user", async done => {
+			const {token} = (await request(app).post("/api/v1/login")
+				.send({username: "testUser", password: "testPass"})).body;
+			await request(app).post("/api/v1/users")
+				.send({username: "testUser2", password: "testPass2"});
+			const res = await request(app).delete("/api/v1/users/testUser2/2fa")
+				.set("x-access-token", token).send();
+			expect(res.statusCode).toBe(403);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+	});
+	describe("Authorized Requests", () => {
+		it("should return 204", async done => {
+			const res = await request(app).delete("/api/v1/users/testUser/2fa")
+				.set("x-access-token", token).send();
+			expect(res.statusCode).toBe(204);
+			done();
+		});
+	});
+});
+
 afterAll(async done => {
 	client = await require("../api/db-utils").conn;
 	await client.close();
