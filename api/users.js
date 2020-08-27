@@ -77,7 +77,22 @@ router.get("/v1/users/:user", async (req, res) => {
 		const user = await (await db).collection("users")
 			.findOne({username: req.params.user});
 		if(user === null){
-			res.status(404).end();
+			return res.status(404).end();
+		}
+		const token = req.get("x-access-token");
+		if(token){
+			const {auth} = await verifyToken(token, res,
+				{message: "Invalid Credentials", ids: [user._id.toString()]});
+			if(auth) res.status(200).json({
+				id: user._id.valueOf(),
+				username: user.username,
+				games: user.games,
+				otpauth_url: user.otpauth ? otpauthURL({
+					secret: await set2FA(user._id),
+					label: req.params.user,
+					issuer: "Quiz Game"
+				}) : undefined
+			});
 		}
 		else{
 			res.json({
@@ -86,7 +101,8 @@ router.get("/v1/users/:user", async (req, res) => {
 				games: user.games});
 		}
 	}
-	catch{
+	catch(err){
+		console.error(err);
 		res.status(503).json({error: "Error retrieving user"});
 	}
 });

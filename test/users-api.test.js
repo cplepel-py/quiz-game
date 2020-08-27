@@ -4,24 +4,81 @@ const app = require("../server");
 const request = require("supertest");
 
 describe("Get User API (GET /v1/users/:user)", () => {
+	let token;
 	beforeAll(async done => {
 		await clearCollection("users");
 		await request(app).post("/api/v1/users")
 			.send({username: "testUser", password: "testPass"});
+		({token} = (await request(app).post("/api/v1/login")
+			.send({username: "testUser", password: "testPass"})).body);
+		await request(app).post("/api/v1/users/testUser/2fa")
+			.set("x-access-token", token).send();
 		done();
 	});
-	it("should return 404 if user does not exist", async done => {
-		const res = await request(app).get("/api/v1/users/notARealUser").send();
-		expect(res.statusCode).toBe(404);
-		done();
+	describe("Unauthenticated Requests", () => {
+		it("should return 404 if user does not exist", async done => {
+			const res = await request(app).get("/api/v1/users/notARealUser").send();
+			expect(res.statusCode).toBe(404);
+			done();
+		});
+		it("should return 200 and public info for an existing user", async done => {
+			const res = await request(app).get("/api/v1/users/testUser").send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body.id).toMatch(/^[a-z0-9]{24}$/);
+			expect(res.body.games).toEqual([]);
+			expect(res.body.username).toBe("testUser");
+			expect(res.body).not.toHaveProperty("otpauth_url");
+			done();
+		});
 	});
-	it("should return 200 and a user object if the user exists", async done => {
-		const res = await request(app).get("/api/v1/users/testUser").send();
-		expect(res.statusCode).toBe(200);
-		expect(res.body.id).toMatch(/^[a-z0-9]{24}$/);
-		expect(res.body.games).toEqual([]);
-		expect(res.body.username).toBe("testUser");
-		done();
+	describe("Authentication and Authorization Issues", () => {
+		it("should return 401 if an invalid token is provided", async done => {
+			const res = await request(app).get("/api/v1/users/testUser")
+				.set("x-access-token", "notAToken")
+				.send({username: "test-user"});
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 401 if the token is expired", async done => {
+			const {id} = (await request(app).get("/api/v1/users/testUser")).body;
+			const token = require("jsonwebtoken")
+				.sign({id}, process.env.JWT_SECRET, {expiresIn: -1});
+			const res = await request(app).get("/api/v1/users/testUser")
+				.set("x-access-token", token).send({});
+			expect(res.statusCode).toBe(401);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+		it("should return 403 if the token is for the wrong user", async done => {
+			const {token} = (await request(app).post("/api/v1/login")
+				.send({username: "testUser", password: "testPass"})).body;
+			await request(app).post("/api/v1/users")
+				.send({username: "testUser2", password: "testPass2"});
+			const res = await request(app).get("/api/v1/users/testUser2")
+				.set("x-access-token", token).send({username: "abc"});
+			expect(res.statusCode).toBe(403);
+			expect(res.body).toHaveProperty("error");
+			done();
+		});
+	});
+	describe("Authorized Requests", () => {
+		it("should return 404 if user does not exist", async done => {
+			const res = await request(app).get("/api/v1/users/notARealUser")
+				.set("x-access-token", token).send();
+			expect(res.statusCode).toBe(404);
+			done();
+		});
+		it("should return all user info for an existing user", async done => {
+			const res = await request(app).get("/api/v1/users/testUser")
+				.set("x-access-token", token).send();
+			expect(res.statusCode).toBe(200);
+			expect(res.body.id).toMatch(/^[a-z0-9]{24}$/);
+			expect(res.body.games).toEqual([]);
+			expect(res.body.username).toBe("testUser");
+			expect(res.body.otpauth_url).toMatch(/^otpauth:\/\//);
+			done();
+		});
 	});
 });
 
