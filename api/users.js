@@ -101,8 +101,7 @@ router.get("/v1/users/:user", async (req, res) => {
 				games: user.games});
 		}
 	}
-	catch(err){
-		console.error(err);
+	catch{
 		res.status(503).json({error: "Error retrieving user"});
 	}
 });
@@ -180,7 +179,6 @@ router.post("/v1/users/:user/password", async (req, res) => {
 		}
 	}
 	catch(err){
-		console.error(err);
 		if(err instanceof MongoError)
 			res.status(503).json({error: "Error accessing database"});
 		else{
@@ -234,7 +232,6 @@ router.post("/v1/users/:user/2fa", async (req, res) => {
 		}
 	}
 	catch(err){
-		console.error(err);
 		if(err instanceof MongoError)
 			res.status(503).json({error: "Error accessing database"});
 		else
@@ -255,7 +252,6 @@ router.delete("/v1/users/:user/2fa", async (req, res) => {
 		}
 	}
 	catch(err){
-		console.error(err);
 		if(err instanceof MongoError)
 			res.status(503).json({error: "Error accessing database"});
 		else
