@@ -2,15 +2,15 @@ const {MongoError, ObjectId} = require("mongodb");
 const {db, searchCollection} = require("./db-utils");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const {sendSMS, authenticateCode, SMSError, AuthenticationError, verifyToken} =
-	require("./auth.js");
+const {verifyToken, check2FA, set2FA, unset2FA} = require("./auth.js");
+const {otpauthURL} = require("speakeasy");
 const router = require("express").Router();
 
 const hashRounds = 12;
 const jwtSecret = process.env.JWT_SECRET
 
 router.post("/v1/users", async (req, res) => {
-	const {username, password, number} = req.body;
+	const {username, password} = req.body;
 	if(typeof username !== "string" || typeof password != "string"){
 		res.status(400).json({
 			error: "Username and password must both be strings"
@@ -23,9 +23,7 @@ router.post("/v1/users", async (req, res) => {
 		await col.insertOne({
 			username,
 			passwordHash: await hash,
-			games: [],
-			request_id: {},
-			number
+			games: []
 		});
 	}
 	catch(err){
@@ -79,7 +77,22 @@ router.get("/v1/users/:user", async (req, res) => {
 		const user = await (await db).collection("users")
 			.findOne({username: req.params.user});
 		if(user === null){
-			res.status(404).end();
+			return res.status(404).end();
+		}
+		const token = req.get("x-access-token");
+		if(token){
+			const {auth} = await verifyToken(token, res,
+				{message: "Invalid Credentials", ids: [user._id.toString()]});
+			if(auth) res.status(200).json({
+				id: user._id.valueOf(),
+				username: user.username,
+				games: user.games,
+				otpauth_url: user.otpauth ? otpauthURL({
+					secret: await set2FA(user._id),
+					label: req.params.user,
+					issuer: "Quiz Game"
+				}) : undefined
+			});
 		}
 		else{
 			res.json({
@@ -151,15 +164,9 @@ router.delete("/v1/users/:user", async (req, res) => {
 
 router.post("/v1/users/:user/password", async (req, res) => {
 	try{
-		const user = await (await db).collection("users")
-			.findOne({username: req.params.user});
-		if(user === null) return res.status(404).end();
-		const {auth} = await verifyToken(req.get("x-access-token"), res, {
-			message: "Cannot change the password of another user",
-			ids: [user._id.toString()]
-		});
-		if(auth && req.body.code && req.body.password){
-			await authenticateCode(user._id, req.body.code, "password");
+		if(req.body.code && req.body.password){
+			const {auth, error} = await check2FA(req.params.user, req.body.code);
+			if(!auth) return res.status(401).json({error});
 			const hash = bcrypt.hash(req.body.password, hashRounds);
 			await (await db).collection("users").updateOne(
 				{_id: user._id},
@@ -167,23 +174,12 @@ router.post("/v1/users/:user/password", async (req, res) => {
 			);
 			res.status(200).json({message: "Updated password"});
 		}
-		else if(auth && (req.body.code || req.body.password)){
-			res.status(400).json({error: "Code or password provided alone"});
-		}
-		else if(auth){
-			const number = user.number ? user.number : req.body.number;
-			await sendSMS(user._id, "password", number);
-			res.status(200).json({
-				message: `Code send to number ending in ${number.slice(-2)}`
-			});
+		else{
+			res.status(400).json({error: "Code and new password are required"});
 		}
 	}
 	catch(err){
-		if(err instanceof SMSError)
-			res.status(503).json({error: "Could not send SMS message"});
-		else if(err instanceof AuthenticationError)
-			res.status(401).json({error: err.message});
-		else if(err instanceof MongoError)
+		if(err instanceof MongoError)
 			res.status(503).json({error: "Error accessing database"});
 		else{
 			res.status(503).json({error: "Error with 2FA procedure"});
@@ -216,6 +212,50 @@ router.get("/v1/users", async (req, res) => {
 	}
 	catch{
 		res.status(503).json({error: "Could not fetch users"});
+	}
+});
+
+router.post("/v1/users/:user/2fa", async (req, res) => {
+	try{
+		const user = await (await db).collection("users")
+			.findOne({username: req.params.user});
+		if(user === null) return res.status(404).end();
+		const {auth} = await verifyToken(req.get("x-access-token"), res,
+			{message: "Cannot edit another user", ids: [user._id.toString()]});
+		if(auth){
+			const otpauth_url = otpauthURL({
+				secret: await set2FA(user._id),
+				label: req.params.user,
+				issuer: "Quiz Game"
+			});
+			res.status(200).json({otpauth_url});
+		}
+	}
+	catch(err){
+		if(err instanceof MongoError)
+			res.status(503).json({error: "Error accessing database"});
+		else
+			res.status(503).json({error: "Error enabling 2FA"});
+	}
+});
+
+router.delete("/v1/users/:user/2fa", async (req, res) => {
+	try{
+		const user = await (await db).collection("users")
+			.findOne({username: req.params.user});
+		if(user === null) return res.status(404).end();
+		const {auth} = await verifyToken(req.get("x-access-token"), res,
+			{message: "Cannot edit another user", ids: [user._id.toString()]});
+		if(auth){
+			await unset2FA(user);
+			res.status(204).send();
+		}
+	}
+	catch(err){
+		if(err instanceof MongoError)
+			res.status(503).json({error: "Error accessing database"});
+		else
+			res.status(503).json({error: "Error enabling 2FA"});
 	}
 });
 
