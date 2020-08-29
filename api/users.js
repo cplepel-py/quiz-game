@@ -25,20 +25,16 @@ router.post("/v1/users", async (req, res) => {
 			passwordHash: await hash,
 			games: []
 		});
+		res.status(201).json({username, games: []});
 	}
 	catch(err){
-		if(err instanceof MongoError && err.code == 11000){
+		if(err instanceof MongoError && err.code == 11000)
 			res.status(409).json({error: "User already exists"});
-		}
-		else if(err instanceof MongoError && err.code == 121){
+		else if(err instanceof MongoError && err.code == 121)
 			res.status(400).json({error: "Invalid username or password"});
-		}
-		else{
+		else
 			res.status(503).json({error: "Error creating user"});
-		}
-		return;
 	}
-	res.status(201).json({username, games: []});
 });
 
 router.post("/v1/login", async (req, res) => {
@@ -51,10 +47,9 @@ router.post("/v1/login", async (req, res) => {
 	}
 	try{
 		const user = await (await db).collection("users").findOne({username});
-		if(user === null){
+		if(user === null)
 			res.status(401).json({error: "Incorrect username or password"});
-		}
-		else if(await bcrypt.compare(password, user.passwordHash)){
+		else if(await bcrypt.compare(password, user.passwordHash))
 			res.status(200).json({
 				token: jwt.sign(
 					{id: user._id.valueOf()},
@@ -62,10 +57,8 @@ router.post("/v1/login", async (req, res) => {
 					{expiresIn: "1d"}
 				)
 			});
-		}
-		else{
+		else
 			res.status(401).json({error: "Incorrect username or password"});
-		}
 	}
 	catch{
 		res.status(503).json({error: "Error verifying credentials"});
@@ -76,9 +69,8 @@ router.get("/v1/users/:user", async (req, res) => {
 	try{
 		const user = await (await db).collection("users")
 			.findOne({username: req.params.user});
-		if(user === null){
+		if(user === null)
 			return res.status(404).end();
-		}
 		const token = req.get("x-access-token");
 		if(token){
 			const {auth} = await verifyToken(token, res,
@@ -98,7 +90,8 @@ router.get("/v1/users/:user", async (req, res) => {
 			res.json({
 				id: user._id.valueOf(),
 				username: user.username,
-				games: user.games});
+				games: user.games
+			});
 		}
 	}
 	catch{
@@ -124,26 +117,21 @@ router.put("/v1/users/:user", async (req, res) => {
 				{$set: {username: req.body.username}},
 				{ignoreUndefined: true}
 			);
-			if(req.body.username)
-				resp.username = req.body.username;
+			if(req.body.username) resp.username = req.body.username;
 			res.status(200).json(resp);
 		}
 	}
 	catch(err){
-		if(err instanceof MongoError && err.code == 11000){
+		if(err instanceof MongoError && err.code == 11000)
 			res.status(409).json({error: "Requested username is in use"});
-		}
-		else if(err instanceof MongoError){
+		else if(err instanceof MongoError)
 			res.status(503).json({
 				error: "Database error or invalid request data"
 			});
-		}
-		else{
+		else
 			res.status(503).json({error: "Error updating user"});
-		}
 	}
 });
-
 
 router.delete("/v1/users/:user", async (req, res) => {
 	try{
@@ -181,9 +169,8 @@ router.post("/v1/users/:user/password", async (req, res) => {
 	catch(err){
 		if(err instanceof MongoError)
 			res.status(503).json({error: "Error accessing database"});
-		else{
+		else
 			res.status(503).json({error: "Error with 2FA procedure"});
-		}
 	}
 });
 
