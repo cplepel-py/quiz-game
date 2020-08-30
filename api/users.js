@@ -2,15 +2,15 @@ const {MongoError, ObjectId} = require("mongodb");
 const {db, searchCollection} = require("./db-utils");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const {sendSMS, authenticateCode, SMSError, AuthenticationError, verifyToken} =
-	require("./auth.js");
+const {verifyToken, check2FA, set2FA, unset2FA} = require("./auth.js");
+const {otpauthURL} = require("speakeasy");
 const router = require("express").Router();
 
 const hashRounds = 12;
 const jwtSecret = process.env.JWT_SECRET
 
 router.post("/v1/users", async (req, res) => {
-	const {username, password, number} = req.body;
+	const {username, password} = req.body;
 	if(typeof username !== "string" || typeof password != "string"){
 		res.status(400).json({
 			error: "Username and password must both be strings"
@@ -23,24 +23,18 @@ router.post("/v1/users", async (req, res) => {
 		await col.insertOne({
 			username,
 			passwordHash: await hash,
-			games: [],
-			request_id: {},
-			number
+			games: []
 		});
+		res.status(201).json({username, games: []});
 	}
 	catch(err){
-		if(err instanceof MongoError && err.code == 11000){
+		if(err instanceof MongoError && err.code == 11000)
 			res.status(409).json({error: "User already exists"});
-		}
-		else if(err instanceof MongoError && err.code == 121){
+		else if(err instanceof MongoError && err.code == 121)
 			res.status(400).json({error: "Invalid username or password"});
-		}
-		else{
+		else
 			res.status(503).json({error: "Error creating user"});
-		}
-		return;
 	}
-	res.status(201).json({username, games: []});
 });
 
 router.post("/v1/login", async (req, res) => {
@@ -53,10 +47,9 @@ router.post("/v1/login", async (req, res) => {
 	}
 	try{
 		const user = await (await db).collection("users").findOne({username});
-		if(user === null){
+		if(user === null)
 			res.status(401).json({error: "Incorrect username or password"});
-		}
-		else if(await bcrypt.compare(password, user.passwordHash)){
+		else if(await bcrypt.compare(password, user.passwordHash))
 			res.status(200).json({
 				token: jwt.sign(
 					{id: user._id.valueOf()},
@@ -64,10 +57,8 @@ router.post("/v1/login", async (req, res) => {
 					{expiresIn: "1d"}
 				)
 			});
-		}
-		else{
+		else
 			res.status(401).json({error: "Incorrect username or password"});
-		}
 	}
 	catch{
 		res.status(503).json({error: "Error verifying credentials"});
@@ -78,14 +69,29 @@ router.get("/v1/users/:user", async (req, res) => {
 	try{
 		const user = await (await db).collection("users")
 			.findOne({username: req.params.user});
-		if(user === null){
-			res.status(404).end();
+		if(user === null)
+			return res.status(404).end();
+		const token = req.get("x-access-token");
+		if(token){
+			const {auth} = await verifyToken(token, res,
+				{message: "Invalid Credentials", ids: [user._id.toString()]});
+			if(auth) res.status(200).json({
+				id: user._id.valueOf(),
+				username: user.username,
+				games: user.games,
+				otpauth_url: user.otpauth ? otpauthURL({
+					secret: await set2FA(user._id),
+					label: req.params.user,
+					issuer: "Quiz Game"
+				}) : undefined
+			});
 		}
 		else{
 			res.json({
 				id: user._id.valueOf(),
 				username: user.username,
-				games: user.games});
+				games: user.games
+			});
 		}
 	}
 	catch{
@@ -111,26 +117,21 @@ router.put("/v1/users/:user", async (req, res) => {
 				{$set: {username: req.body.username}},
 				{ignoreUndefined: true}
 			);
-			if(req.body.username)
-				resp.username = req.body.username;
+			if(req.body.username) resp.username = req.body.username;
 			res.status(200).json(resp);
 		}
 	}
 	catch(err){
-		if(err instanceof MongoError && err.code == 11000){
+		if(err instanceof MongoError && err.code == 11000)
 			res.status(409).json({error: "Requested username is in use"});
-		}
-		else if(err instanceof MongoError){
+		else if(err instanceof MongoError)
 			res.status(503).json({
 				error: "Database error or invalid request data"
 			});
-		}
-		else{
+		else
 			res.status(503).json({error: "Error updating user"});
-		}
 	}
 });
-
 
 router.delete("/v1/users/:user", async (req, res) => {
 	try{
@@ -151,15 +152,9 @@ router.delete("/v1/users/:user", async (req, res) => {
 
 router.post("/v1/users/:user/password", async (req, res) => {
 	try{
-		const user = await (await db).collection("users")
-			.findOne({username: req.params.user});
-		if(user === null) return res.status(404).end();
-		const {auth} = await verifyToken(req.get("x-access-token"), res, {
-			message: "Cannot change the password of another user",
-			ids: [user._id.toString()]
-		});
-		if(auth && req.body.code && req.body.password){
-			await authenticateCode(user._id, req.body.code, "password");
+		if(req.body.code && req.body.password){
+			const {auth, error} = await check2FA(req.params.user, req.body.code);
+			if(!auth) return res.status(401).json({error});
 			const hash = bcrypt.hash(req.body.password, hashRounds);
 			await (await db).collection("users").updateOne(
 				{_id: user._id},
@@ -167,27 +162,15 @@ router.post("/v1/users/:user/password", async (req, res) => {
 			);
 			res.status(200).json({message: "Updated password"});
 		}
-		else if(auth && (req.body.code || req.body.password)){
-			res.status(400).json({error: "Code or password provided alone"});
-		}
-		else if(auth){
-			const number = user.number ? user.number : req.body.number;
-			await sendSMS(user._id, "password", number);
-			res.status(200).json({
-				message: `Code send to number ending in ${number.slice(-2)}`
-			});
+		else{
+			res.status(400).json({error: "Code and new password are required"});
 		}
 	}
 	catch(err){
-		if(err instanceof SMSError)
-			res.status(503).json({error: "Could not send SMS message"});
-		else if(err instanceof AuthenticationError)
-			res.status(401).json({error: err.message});
-		else if(err instanceof MongoError)
+		if(err instanceof MongoError)
 			res.status(503).json({error: "Error accessing database"});
-		else{
+		else
 			res.status(503).json({error: "Error with 2FA procedure"});
-		}
 	}
 });
 
@@ -216,6 +199,50 @@ router.get("/v1/users", async (req, res) => {
 	}
 	catch{
 		res.status(503).json({error: "Could not fetch users"});
+	}
+});
+
+router.post("/v1/users/:user/2fa", async (req, res) => {
+	try{
+		const user = await (await db).collection("users")
+			.findOne({username: req.params.user});
+		if(user === null) return res.status(404).end();
+		const {auth} = await verifyToken(req.get("x-access-token"), res,
+			{message: "Cannot edit another user", ids: [user._id.toString()]});
+		if(auth){
+			const otpauth_url = otpauthURL({
+				secret: await set2FA(user._id),
+				label: req.params.user,
+				issuer: "Quiz Game"
+			});
+			res.status(200).json({otpauth_url});
+		}
+	}
+	catch(err){
+		if(err instanceof MongoError)
+			res.status(503).json({error: "Error accessing database"});
+		else
+			res.status(503).json({error: "Error enabling 2FA"});
+	}
+});
+
+router.delete("/v1/users/:user/2fa", async (req, res) => {
+	try{
+		const user = await (await db).collection("users")
+			.findOne({username: req.params.user});
+		if(user === null) return res.status(404).end();
+		const {auth} = await verifyToken(req.get("x-access-token"), res,
+			{message: "Cannot edit another user", ids: [user._id.toString()]});
+		if(auth){
+			await unset2FA(user);
+			res.status(204).send();
+		}
+	}
+	catch(err){
+		if(err instanceof MongoError)
+			res.status(503).json({error: "Error accessing database"});
+		else
+			res.status(503).json({error: "Error enabling 2FA"});
 	}
 });
 
