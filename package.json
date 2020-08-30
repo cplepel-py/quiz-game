@@ -32,6 +32,9 @@
   },
   "jest": {
     "testRegex": "./test/.*.test.js$",
-    "rootDir": "."
+    "rootDir": ".",
+    "transform": {
+      "^.+\\.marko$": "./test/jest-marko.js"
+	}
   }
 }
