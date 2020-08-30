@@ -105,6 +105,9 @@ $ let pwScore = getScore(report.guesses_log10);
 				style={backgroundColor: (state.unError ? "#ffc0c0" : "white")}
 				value=state.username on-input("updateUsername") /><br/>
 			<input type="password" placeholder="Password" value=state.pwd on-input("updatePwd") /><br/>
+			<input type="password" placeholder="Confirm Password"
+				style={backgroundColor: (state.pwd === state.conf ? 'white' : '#ffc0c0')}
+				value=state.conf on-input("updateConf") /><br/>
 			<div class="pw-bar-container" title="Password strength">
 				<div class="pw-bar" style={backgroundColor: pwScore.color, width: `Calc(${pwScore.score*100}% - 4px)`}>${pwScore.text}</div>
 			</div>
@@ -113,9 +116,6 @@ $ let pwScore = getScore(report.guesses_log10);
 			<for|sugg| of=report.feedback.suggestions>
 				<div class="pw-sugg">${sugg}</div>
 			</for>
-			<input type="password" placeholder="Confirm Password"
-				style={backgroundColor: (state.pwd === state.conf ? 'white' : '#ffc0c0')}
-				value=state.conf on-input("updateConf") /><br/>
 			<input type="button" value="Sign Up" on-click("submit") />
 			<div class={"error-container--highlight": state.highlight}>
 				<if(state.pwError)>
@@ -171,6 +171,7 @@ style {
 		overflow: hidden;
 		border: 1px solid #ccc;
 		display: inline-block;
+		margin-top: 0.5em;
 	}
 	.pw-bar {
 		white-space: nowrap;
