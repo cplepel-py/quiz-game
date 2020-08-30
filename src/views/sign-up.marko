@@ -11,7 +11,6 @@ class {
 			error: "",
 			pwError: "",
 			unError: "",
-			phError: "",
 			pwWarning: "",
 			pwHints: []
 		};
@@ -30,10 +29,6 @@ class {
 		this.state.username = el.value;
 		this.state.unError = this.state.username ? "" : "Username is required";
 	}
-	updatePhone(_, el) {
-		this.state.phone = el.value;
-		this.state.phError = this.state.phone ? "" : "Phone number is required";
-	}
 	flash() {
 		this.state.highlight = true;
 		setTimeout(() => {this.state.highlight = false;}, 100);
@@ -46,10 +41,6 @@ class {
 		}
 		else if(!this.state.username){
 			this.state.unError = "Username is required";
-			this.flash();
-		}
-		else if(!this.state.phone){
-			this.state.phError = "Phone number is required";
 			this.flash();
 		}
 		else
@@ -125,9 +116,6 @@ $ let pwScore = getScore(report.guesses_log10);
 			<input type="password" placeholder="Confirm Password"
 				style={backgroundColor: (state.pwd === state.conf ? 'white' : '#ffc0c0')}
 				value=state.conf on-input("updateConf") /><br/>
-			<input type="text" placeholder="Phone Number"
-				style={backgroundColor: (state.phError ? "#ffc0c0" : "white")}
-				value=state.phone on-input("updatePhone") /><br/>
 			<input type="button" value="Sign Up" on-click("submit") />
 			<div class={"error-container--highlight": state.highlight}>
 				<if(state.pwError)>
@@ -135,9 +123,6 @@ $ let pwScore = getScore(report.guesses_log10);
 				</if>
 				<else-if(state.unError)>
 					<div class="error-box">${state.unError}</div>
-				</else-if>
-				<else-if(state.phError)>
-					<div class="error-box">${state.phError}</div>
 				</else-if>
 				<if(state.error)>
 					<div class="error-box">${state.error}</div>
