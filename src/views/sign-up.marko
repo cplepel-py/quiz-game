@@ -109,7 +109,8 @@ $ let pwScore = getScore(report.guesses_log10);
 				style={backgroundColor: (state.pwd === state.conf ? 'white' : '#ffc0c0')}
 				value=state.conf on-input("updateConf") /><br/>
 			<div class="pw-bar-container" title="Password strength">
-				<div class="pw-bar" style={backgroundColor: pwScore.color, width: `Calc(${pwScore.score*100}% - 4px)`}>${pwScore.text}</div>
+				<div class="pw-bar" style={backgroundColor: pwScore.color, width: `Calc(${pwScore.score*100}% - 4px)`}></div>
+				<div class="pw-bar-text">${pwScore.text}</div>
 			</div>
 			<br>
 			<if(report.feedback.warning)><div class="pw-warn">${report.feedback.warning}</div></if>
@@ -172,11 +173,19 @@ style {
 		border: 1px solid #ccc;
 		display: inline-block;
 		margin-top: 0.5em;
+		position: relative;
 	}
 	.pw-bar {
-		white-space: nowrap;
 		padding: 2px;
 		font-size: 0.9em;
+		height: 1.2em;
+	}
+	.pw-bar-text {
+		font-size: 0.9em;
+		position: absolute;
+		width: 100%;
+		line-height: 1.2em;
+		top: 2px;
 	}
 	.pw-warn {
 		color: #ff0000;
