@@ -96,6 +96,9 @@ $ function getScore(glog10){
 		return {text: "super strong", color: "#00f000", score: 1};
 }
 $ let pwScore = getScore(report.guesses_log10);
+$ let strengthDisplay = ("Estimated " +
+	report.crack_times_display.offline_slow_hashing_1e4_per_second +
+	" to crack offline");
 
 <base-outline title="Sign Up | Quiz Game">
 	<@body>
@@ -108,7 +111,7 @@ $ let pwScore = getScore(report.guesses_log10);
 			<input type="password" placeholder="Confirm Password"
 				style={backgroundColor: (state.pwd === state.conf ? 'white' : '#ffc0c0')}
 				value=state.conf on-input("updateConf") /><br/>
-			<div class="pw-bar-container" title="Password strength">
+			<div class="pw-bar-container" title=strengthDisplay>
 				<div class="pw-bar" style={backgroundColor: pwScore.color, width: `Calc(${pwScore.score*100}% - 4px)`}></div>
 				<div class="pw-bar-text">${pwScore.text}</div>
 			</div>
