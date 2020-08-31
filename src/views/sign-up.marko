@@ -71,7 +71,8 @@ class {
 	}
 }
 
-$ let report = zxcvbn(state.pwd, ["quiz", "game", "jeopardy", "correcthorsebatterystaple"]);
+$ let report = zxcvbn(state.pwd, [state.username, "quiz", "game", "jeopardy",
+	...state.username.matchAll(/[a-zA-Z0-9][a-z0-9]*/g), "correcthorsebatterystaple"]);
 $ function getScore(glog10){
 	let score = (glog10 - 6) / 9;
 	if(glog10 < 6)
