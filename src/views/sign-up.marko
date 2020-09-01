@@ -112,9 +112,15 @@ $ let strengthDisplay = ("Estimated " +
 			<input type="password" placeholder="Confirm Password"
 				style={backgroundColor: (state.pwd === state.conf ? 'white' : '#ffc0c0')}
 				value=state.conf on-input("updateConf") /><br/>
-			<div class="pw-bar-container" title=strengthDisplay>
-				<div class="pw-bar" style={backgroundColor: pwScore.color, width: `Calc(${pwScore.score*100}% - 4px)`}></div>
-				<div class="pw-bar-text">${pwScore.text}</div>
+			<div class="tooltip-container">
+				<div class="pw-bar-container" title=strengthDisplay>
+					<div class="pw-bar" style={backgroundColor: pwScore.color, width: `Calc(${pwScore.score*100}% - 4px)`}></div>
+					<div class="pw-bar-text">${pwScore.text}</div>
+				</div>
+				<div class="tooltip">
+					<div class="tooltip-arrow-left"></div>
+					<span class="tooltip-text">${strengthDisplay}</span>
+				</div>
 			</div>
 			<br>
 			<if(report.feedback.warning)><div class="pw-warn">${report.feedback.warning}</div></if>
@@ -176,7 +182,6 @@ style {
 		overflow: hidden;
 		border: 1px solid #ccc;
 		display: inline-block;
-		margin-top: 0.5em;
 		position: relative;
 	}
 	.pw-bar {
@@ -198,5 +203,19 @@ style {
 	.pw-sugg {
 		color: #ffc000;
 		font-size: 0.9em;
+	}
+	.tooltip-container {
+		position: relative;
+		display: inline-block;
+		margin-top: 0.5em;
+	}
+	.tooltip {
+		width: 20ch;
+		border-radius: 8px;
+		background-color: #404040;
+		position: absolute;
+		left: 100%;
+		top: 50%;
+		transform: translate(0, -50%);
 	}
 }
