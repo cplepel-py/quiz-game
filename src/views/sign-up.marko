@@ -212,10 +212,17 @@ style {
 	.tooltip {
 		width: 20ch;
 		border-radius: 8px;
-		background-color: #404040;
+		background-color: rgba(128,128,128,0.75);
 		position: absolute;
 		left: 100%;
 		top: 50%;
 		transform: translate(0, -50%);
+		display: none;
+	}
+	.tooltip-container:hover .tooltip {
+		display: block;
+	}
+	.tooltip-text {
+		font-size: 0.9em;
 	}
 }
