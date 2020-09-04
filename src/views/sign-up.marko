@@ -112,16 +112,15 @@ $ let strengthDisplay = ("Estimated " +
 			<input type="password" placeholder="Confirm Password"
 				style={backgroundColor: (state.pwd === state.conf ? 'white' : '#ffc0c0')}
 				value=state.conf on-input("updateConf") /><br/>
-			<div class="tooltip-container">
+			<tooltip style="margin-top: 0.5em">
 				<div class="pw-bar-container" title=strengthDisplay>
 					<div class="pw-bar" style={backgroundColor: pwScore.color, width: `Calc(${pwScore.score*100}% - 4px)`}></div>
 					<div class="pw-bar-text">${pwScore.text}</div>
 				</div>
-				<div class="tooltip">
-					<div class="tooltip-arrow-left"></div>
-					<span class="tooltip-text">${strengthDisplay}</span>
-				</div>
-			</div>
+				<@tooltip>
+					${strengthDisplay}
+				</@tooltip>
+			</tooltip>
 			<br>
 			<if(report.feedback.warning)><div class="pw-warn">${report.feedback.warning}</div></if>
 			<for|sugg| of=report.feedback.suggestions>
@@ -202,27 +201,6 @@ style {
 	}
 	.pw-sugg {
 		color: #ffc000;
-		font-size: 0.9em;
-	}
-	.tooltip-container {
-		position: relative;
-		display: inline-block;
-		margin-top: 0.5em;
-	}
-	.tooltip {
-		width: 20ch;
-		border-radius: 8px;
-		background-color: rgba(128,128,128,0.75);
-		position: absolute;
-		left: 100%;
-		top: 50%;
-		transform: translate(0, -50%);
-		display: none;
-	}
-	.tooltip-container:hover .tooltip {
-		display: block;
-	}
-	.tooltip-text {
 		font-size: 0.9em;
 	}
 }

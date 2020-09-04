@@ -1,0 +1,27 @@
+<div class="tooltip-container">
+	<${input.renderBody} />
+	<div class=["tooltip", "tooltip-"+input.dir] style=input.tooltipStyle>
+		<${input.tooltip} />
+	</div>
+</div>
+
+style {
+	.tooltip-container {
+		position: relative;
+		display: inline-block;
+	}
+	.tooltip {
+		border-radius: 8px;
+		background-color: rgba(128,128,128,0.75);
+		position: absolute;
+		left: 100%;
+		top: 50%;
+		transform: translate(0, -50%);
+		display: none;
+		font-size: 0.8em;
+		width: 20ch;
+	}
+	.tooltip-container:hover .tooltip {
+		display: block;
+	}
+}
