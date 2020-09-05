@@ -112,7 +112,7 @@ $ let strengthDisplay = ("Estimated " +
 			<input type="password" placeholder="Confirm Password"
 				style={backgroundColor: (state.pwd === state.conf ? 'white' : '#ffc0c0')}
 				value=state.conf on-input("updateConf") /><br/>
-			<tooltip style="margin-top: 0.5em">
+			<tooltip style="margin-top: 0.5em" dir="right">
 				<div class="pw-bar-container">
 					<div class="pw-bar" style={backgroundColor: pwScore.color, width: `Calc(${pwScore.score*100}% - 4px)`}></div>
 					<div class="pw-bar-text">${pwScore.text}</div>
