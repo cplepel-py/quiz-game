@@ -36,4 +36,34 @@ style {
 		top: Calc(50% - 5px);
 		border-right-color: rgba(128, 128, 128, .75);
 	}
+	.tooltip-left {
+		left: -5px;
+		top: 50%;
+		transform: translate(-100%, -50%);
+	}
+	.tooltip-left::after {
+		left: 100%;
+		top: Calc(50% - 5px);
+		border-left-color: rgba(128, 128, 128, .75);
+	}
+	.tooltip-up {
+		left: 50%;
+		top: -5px;
+		transform: translate(-50%, -100%);
+	}
+	.tooltip-up::after {
+		left: Calc(50% - 5px);
+		top: 100%;
+		border-top-color: rgba(128, 128, 128, .75);
+	}
+	.tooltip-down {
+		left: 50%;
+		top: 100%;
+		transform: translate(-50%, 0);
+	}
+	.tooltip-down::after {
+		left: Calc(50% - 5px);
+		top: -10px;
+		border-bottom-color: rgba(128, 128, 128, .75);
+	}
 }
