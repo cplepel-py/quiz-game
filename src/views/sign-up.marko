@@ -56,7 +56,8 @@ class {
 				if(res.status === 201)
 					return window.location.assign("/login");
 				res.json().then(body => {
-					this.state.error = body.error || "An error occurred creating a new user";
+					this.state.error = body.error ||
+						"An error occurred creating a new user";
 					this.flash();
 				}).catch(e => {
 					console.error(e);
@@ -72,7 +73,8 @@ class {
 }
 
 $ let report = zxcvbn(state.pwd, [state.username, "quiz", "game", "jeopardy",
-	...state.username.matchAll(/[a-zA-Z0-9][a-z0-9]*/g), "correcthorsebatterystaple"]);
+	...state.username.matchAll(/[a-zA-Z0-9][a-z0-9]*/g),
+	"correcthorsebatterystaple"]);
 $ function getScore(glog10){
 	let score = (glog10 - 6) / 9;
 	if(glog10 < 6)
@@ -108,13 +110,17 @@ $ let strengthDisplay = ("Estimated " +
 			<input type="text" placeholder="Username"
 				style={backgroundColor: (state.unError ? "#ffc0c0" : "white")}
 				value=state.username on-input("updateUsername") /><br/>
-			<input type="password" placeholder="Password" value=state.pwd on-input("updatePwd") /><br/>
+			<input type="password" placeholder="Password"
+				value=state.pwd on-input("updatePwd") /><br/>
 			<input type="password" placeholder="Confirm Password"
 				style={backgroundColor: (state.pwd === state.conf ? 'white' : '#ffc0c0')}
 				value=state.conf on-input("updateConf") /><br/>
 			<tooltip style="margin-top: 0.5em" dir="right">
 				<div class="pw-bar-container">
-					<div class="pw-bar" style={backgroundColor: pwScore.color, width: `Calc(${pwScore.score*100}% - 4px)`}></div>
+					<div class="pw-bar" style={
+						backgroundColor: pwScore.color,
+						width: `Calc(${pwScore.score*100}% - 4px)`
+					}></div>
 					<div class="pw-bar-text">${pwScore.text}</div>
 				</div>
 				<@tooltip>
@@ -122,7 +128,9 @@ $ let strengthDisplay = ("Estimated " +
 				</@tooltip>
 			</tooltip>
 			<br>
-			<if(report.feedback.warning)><div class="pw-warn">${report.feedback.warning}</div></if>
+			<if(report.feedback.warning)>
+				<div class="pw-warn">${report.feedback.warning}</div>
+			</if>
 			<for|sugg| of=report.feedback.suggestions>
 				<div class="pw-sugg">${sugg}</div>
 			</for>
