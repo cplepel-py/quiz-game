@@ -1,0 +1,69 @@
+<div class="tooltip-container" style=input.style>
+	<${input.renderBody} />
+	<div class=["tooltip", "tooltip-"+input.dir] style=input.tooltipStyle>
+		<${input.tooltip} />
+	</div>
+</div>
+
+style {
+	.tooltip-container {
+		position: relative;
+		display: inline-block;
+	}
+	.tooltip {
+		border-radius: 8px;
+		background-color: rgba(128,128,128,0.75);
+		position: absolute;
+		display: none;
+		font-size: 0.8em;
+		width: 20ch;
+	}
+	.tooltip::after{
+		content: "";
+		position: absolute;
+		border: 5px solid transparent;
+	}
+	.tooltip-container:hover .tooltip {
+		display: block;
+	}
+	.tooltip-right {
+		left: Calc(100% + 5px);
+		top: 50%;
+		transform: translate(0, -50%);
+	}
+	.tooltip-right::after {
+		left: -10px;
+		top: Calc(50% - 5px);
+		border-right-color: rgba(128, 128, 128, .75);
+	}
+	.tooltip-left {
+		left: -5px;
+		top: 50%;
+		transform: translate(-100%, -50%);
+	}
+	.tooltip-left::after {
+		left: 100%;
+		top: Calc(50% - 5px);
+		border-left-color: rgba(128, 128, 128, .75);
+	}
+	.tooltip-up {
+		left: 50%;
+		top: -5px;
+		transform: translate(-50%, -100%);
+	}
+	.tooltip-up::after {
+		left: Calc(50% - 5px);
+		top: 100%;
+		border-top-color: rgba(128, 128, 128, .75);
+	}
+	.tooltip-down {
+		left: 50%;
+		top: 100%;
+		transform: translate(-50%, 0);
+	}
+	.tooltip-down::after {
+		left: Calc(50% - 5px);
+		top: -10px;
+		border-bottom-color: rgba(128, 128, 128, .75);
+	}
+}

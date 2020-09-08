@@ -1,0 +1,214 @@
+import zxcvbn from "zxcvbn";
+
+class {
+	onCreate() {
+		this.state = {
+			pwd: "",
+			conf: "",
+			username: "",
+			phone: "",
+			highlight: false,
+			error: "",
+			pwError: "",
+			unError: "",
+			pwWarning: "",
+			pwHints: []
+		};
+	}
+	updatePwd(_, el) {
+		this.state.pwd = el.value;
+		this.state.pwError = this.state.pwd === this.state.conf ?
+			"" : "Passwords do not match";
+	}
+	updateConf(_, el) {
+		this.state.conf = el.value;
+		this.state.pwError = this.state.pwd === this.state.conf ?
+			"" : "Passwords do not match";
+	}
+	updateUsername(_, el) {
+		this.state.username = el.value;
+		this.state.unError = this.state.username ? "" : "Username is required";
+	}
+	flash() {
+		this.state.highlight = true;
+		setTimeout(() => {this.state.highlight = false;}, 100);
+	}
+	submit() {
+		this.state.error = "";
+		if(this.state.pwd !== this.state.conf){
+			this.state.pwError = "Passwords do not match";
+			this.flash();
+		}
+		else if(!this.state.username){
+			this.state.unError = "Username is required";
+			this.flash();
+		}
+		else
+			fetch("/api/v1/users", {
+				method: "POST",
+				headers: {"Content-Type": "application/json"},
+				body: JSON.stringify({
+					username: this.state.username,
+					password: this.state.pwd,
+					number: this.state.phone
+				})
+			}).then(res => {
+				if(res.status === 201)
+					return window.location.assign("/login");
+				res.json().then(body => {
+					this.state.error = body.error ||
+						"An error occurred creating a new user";
+					this.flash();
+				}).catch(e => {
+					console.error(e);
+					this.state.error = "An error occurred creating a new user";
+					this.flash();
+				});
+			}).catch(e => {
+				console.error(e);
+				this.state.error = "An error occurred creating a new user";
+				this.flash();
+			});
+	}
+}
+
+$ let report = zxcvbn(state.pwd, [state.username, "quiz", "game", "jeopardy",
+	...state.username.matchAll(/[a-zA-Z0-9][a-z0-9]*/g),
+	"correcthorsebatterystaple"]);
+$ function getScore(glog10){
+	let score = (glog10 - 6) / 9;
+	if(glog10 < 6)
+		return {text: "unsafe", color: "#ff0000", score: 0};
+	else if(glog10 < 7)
+		return {text: "very weak", color: "#ff0000", score};
+	else if(glog10 < 8)
+		return {text: "very weak", color: "#ff4000", score};
+	else if(glog10 < 9)
+		return {text: "weak", color: "#ff8000", score};
+	else if(glog10 < 10)
+		return {text: "so-so", color: "#ffc000", score};
+	else if(glog10 < 11)
+		return {text: "ok", color: "#fff000", score};
+	else if(glog10 < 12)
+		return {text: "good", color: "#c0f000", score};
+	else if(glog10 < 14)
+		return {text: "strong", color: "#80f000", score};
+	else if(glog10 < 18)
+		return {text: "very strong", color: "#40f000", score: 1};
+	else
+		return {text: "super strong", color: "#00f000", score: 1};
+}
+$ let pwScore = getScore(report.guesses_log10);
+$ let strengthDisplay = ("Estimated " +
+	report.crack_times_display.offline_slow_hashing_1e4_per_second +
+	" to crack offline");
+
+<base-outline title="Sign Up | Quiz Game">
+	<@body>
+		<div class="card">
+			<h2>Sign Up</h2>
+			<input type="text" placeholder="Username"
+				style={backgroundColor: (state.unError ? "#ffc0c0" : "white")}
+				value=state.username on-input("updateUsername") /><br/>
+			<input type="password" placeholder="Password"
+				value=state.pwd on-input("updatePwd") /><br/>
+			<input type="password" placeholder="Confirm Password"
+				style={backgroundColor: (state.pwd === state.conf ? 'white' : '#ffc0c0')}
+				value=state.conf on-input("updateConf") /><br/>
+			<tooltip style="margin-top: 0.5em" dir="right">
+				<div class="pw-bar-container">
+					<div class="pw-bar" style={
+						backgroundColor: pwScore.color,
+						width: `Calc(${pwScore.score*100}% - 4px)`
+					}></div>
+					<div class="pw-bar-text">${pwScore.text}</div>
+				</div>
+				<@tooltip>
+					${strengthDisplay}
+				</@tooltip>
+			</tooltip>
+			<br>
+			<if(report.feedback.warning)>
+				<div class="pw-warn">${report.feedback.warning}</div>
+			</if>
+			<for|sugg| of=report.feedback.suggestions>
+				<div class="pw-sugg">${sugg}</div>
+			</for>
+			<input type="button" value="Sign Up" on-click("submit") />
+			<div class={"error-container--highlight": state.highlight}>
+				<if(state.pwError)>
+					<div class="error-box">${state.pwError}</div>
+				</if>
+				<else-if(state.unError)>
+					<div class="error-box">${state.unError}</div>
+				</else-if>
+				<if(state.error)>
+					<div class="error-box">${state.error}</div>
+				</if>
+			</div>
+		</div>
+	</@body>
+</base-outline>
+
+style {
+	.card {
+		width: 50%;
+		margin-left: 50%;
+		transform: translate(-50%, 0);
+		box-shadow: 0px 1px 8px rgba(0,0,0,0.3);
+		text-align: center;
+		overflow: auto;
+	}
+	.card input {
+		padding: 8px;
+		margin: 0.5em;
+		border-radius: 8px;
+		border: 1px solid #ccc;
+		outline: none;
+	}
+	.card input:focus {
+		border: 1px solid black;
+	}
+	.card input[type="button" i] {
+		background-color: white;
+	}
+	.card input[type="button" i]:hover {
+		background-color: #ccc;
+	}
+	.error-box {
+		background-color: #ffc0c0;
+		border: 1px solid red;
+		border-radius: 8px;
+	}
+	.error-container--highlight .error-box {
+		background-color: #ff8080;
+	}
+	.pw-bar-container {
+		width: 20ch;
+		border-radius: 8px;
+		overflow: hidden;
+		border: 1px solid #ccc;
+		display: inline-block;
+		position: relative;
+	}
+	.pw-bar {
+		padding: 2px;
+		font-size: 0.9em;
+		height: 1.2em;
+	}
+	.pw-bar-text {
+		font-size: 0.9em;
+		position: absolute;
+		width: 100%;
+		line-height: 1.2em;
+		top: 2px;
+	}
+	.pw-warn {
+		color: #ff0000;
+		font-size: 0.9em;
+	}
+	.pw-sugg {
+		color: #ffc000;
+		font-size: 0.9em;
+	}
+}

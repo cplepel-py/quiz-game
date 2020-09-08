@@ -4,7 +4,21 @@ if(process.env.NODE_ENV !== "production"){
 const express = require("express");
 const app = express();
 const apiRouter = require("./api/api");
+const {serveStatic} = require("lasso/middleware");
+require("marko/node-require").install();
+const signup = require("./src/views/sign-up.marko");
+
+require("lasso").configure({
+	plugins: ["lasso-marko"]
+});
+
 app.use("/api", apiRouter);
+
+app.use(serveStatic());
+
+app.get("/sign-up", (req, res) => {
+	signup.render({}, res);
+});
 
 if(process.env.NODE_ENV !== "test"){
 	app.listen(process.env.PORT, () => console.log(`Listening on port ${process.env.PORT}`));
