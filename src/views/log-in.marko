@@ -1,0 +1,37 @@
+<base-outline title="Log In | Quiz Game">
+	<@body>
+		<div class="card">
+			<h2>Log In</h2>
+			<input type="text" placeholder="Username" /><br/>
+			<input type="password" placeholder="Password" /><br/>
+			<input type="button" value="Log In" />
+		</div>
+	</@body>
+</base-outline>
+
+style {
+	.card {
+		width: 50%;
+		margin-left: 50%;
+		transform: translate(-50%, 0);
+		box-shadow: 0px 1px 8px rgba(0,0,0,0.3);
+		text-align: center;
+		overflow: auto;
+	}
+	.card input {
+		padding: 8px;
+		margin: 0.5em;
+		border-radius: 8px;
+		border: 1px solid #ccc;
+		outline: none;
+	}
+	.card input:focus {
+		border: 1px solid black;
+	}
+	.card input[type="button" i] {
+		background-color: white;
+	}
+	.card input[type="button" i]:hover {
+		background-color: #ccc;
+	}
+}
