@@ -1,10 +1,43 @@
+class {
+	onCreate(){
+		this.state = {error: ""};
+	}
+	submit(){
+		fetch("/api/v1/login", {
+			method: "POST",
+			headers: {"Content-Type": "application/json"},
+			body: JSON.stringify({
+				username: this.getEl("un").value,
+				password: this.getEl("pwd").value
+			})
+		}).then(res => {
+			console.log(res);
+			if(res.status === 200){
+				window.sessionStorage.setItem("jwt", res.body.token);
+				return window.location.assign("/");
+			}
+			res.json().then(body => {
+				this.state.error = body.error ||
+					"An error occurred creating a new user";
+				console.log(this.state.error);
+			}).catch(e => {
+				console.error(e);
+				this.state.error = "An error occurred creating a new user";
+			});
+		}).catch(e => {
+			console.error(e);
+			this.state.error = "An error occurred creating a new user";
+		});
+	}
+}
+
 <base-outline title="Log In | Quiz Game">
 	<@body>
 		<div class="card">
 			<h2>Log In</h2>
-			<input type="text" placeholder="Username" /><br/>
-			<input type="password" placeholder="Password" /><br/>
-			<input type="button" value="Log In" />
+			<input type="text" placeholder="Username" key="un" /><br/>
+			<input type="password" placeholder="Password" key="pwd" /><br/>
+			<input type="button" value="Log In" on-click("submit") />
 		</div>
 	</@body>
 </base-outline>
