@@ -38,6 +38,9 @@ class {
 			<input type="text" placeholder="Username" key="un" /><br/>
 			<input type="password" placeholder="Password" key="pwd" /><br/>
 			<input type="button" value="Log In" on-click("submit") />
+			<if(state.error)>
+				<div class="error-box">${state.error}</div>
+			</if>
 		</div>
 	</@body>
 </base-outline>
@@ -66,5 +69,10 @@ style {
 	}
 	.card input[type="button" i]:hover {
 		background-color: #ccc;
+	}
+	.error-box {
+		background-color: #ffc0c0;
+		border: 1px solid red;
+		border-radius: 8px;
 	}
 }
