@@ -21,7 +21,7 @@ app.get("/sign-up", (req, res) => {
 	signup.render({}, res);
 });
 
-app.get("/log-in", (req, res) => {
+app.get("/login", (req, res) => {
 	login.render({}, res);
 });
 
