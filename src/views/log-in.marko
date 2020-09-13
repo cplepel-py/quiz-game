@@ -12,11 +12,12 @@ class {
 			})
 		}).then(res => {
 			console.log(res);
-			if(res.status === 200){
-				window.sessionStorage.setItem("jwt", res.body.token);
-				return window.location.assign("/");
-			}
 			res.json().then(body => {
+				if(res.status === 200){
+					sessionStorage.setItem("jwt", body.token);
+					let rdr = (new URLSearchParams(location.search)).get("rdr");
+					return location.assign(rdr || "/");
+				}
 				this.state.error = body.error ||
 					"An error occurred creating a new user";
 				console.log(this.state.error);
