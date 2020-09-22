@@ -1,0 +1,79 @@
+class {
+	onCreate(){
+		this.state = {error: ""};
+	}
+	submit(){
+		fetch("/api/v1/login", {
+			method: "POST",
+			headers: {"Content-Type": "application/json"},
+			body: JSON.stringify({
+				username: this.getEl("un").value,
+				password: this.getEl("pwd").value
+			})
+		}).then(res => {
+			console.log(res);
+			res.json().then(body => {
+				if(res.status === 200){
+					sessionStorage.setItem("jwt", body.token);
+					let rdr = (new URLSearchParams(location.search)).get("rdr");
+					return location.assign(rdr || "/");
+				}
+				this.state.error = body.error ||
+					"An error occurred creating a new user";
+				console.log(this.state.error);
+			}).catch(e => {
+				console.error(e);
+				this.state.error = "An error occurred creating a new user";
+			});
+		}).catch(e => {
+			console.error(e);
+			this.state.error = "An error occurred creating a new user";
+		});
+	}
+}
+
+<base-outline title="Log In | Quiz Game">
+	<@body>
+		<div class="card">
+			<h2>Log In</h2>
+			<input type="text" placeholder="Username" key="un" /><br/>
+			<input type="password" placeholder="Password" key="pwd" /><br/>
+			<input type="button" value="Log In" on-click("submit") />
+			<if(state.error)>
+				<div class="error-box">${state.error}</div>
+			</if>
+		</div>
+	</@body>
+</base-outline>
+
+style {
+	.card {
+		width: 50%;
+		margin-left: 50%;
+		transform: translate(-50%, 0);
+		box-shadow: 0px 1px 8px rgba(0,0,0,0.3);
+		text-align: center;
+		overflow: auto;
+	}
+	.card input {
+		padding: 8px;
+		margin: 0.5em;
+		border-radius: 8px;
+		border: 1px solid #ccc;
+		outline: none;
+	}
+	.card input:focus {
+		border: 1px solid black;
+	}
+	.card input[type="button" i] {
+		background-color: white;
+	}
+	.card input[type="button" i]:hover {
+		background-color: #ccc;
+	}
+	.error-box {
+		background-color: #ffc0c0;
+		border: 1px solid red;
+		border-radius: 8px;
+	}
+}
