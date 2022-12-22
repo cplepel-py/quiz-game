@@ -16,7 +16,7 @@
     "@lasso/marko-taglib": "^1.0.15",
     "bcrypt": "^5.0.0",
     "express": "^4.17.1",
-    "jsonwebtoken": "^8.5.1",
+    "jsonwebtoken": "^9.0.0",
     "lasso": "^3.3.1",
     "lasso-marko": "^2.5.0",
     "marko": "^4.22.7",
